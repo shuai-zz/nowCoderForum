@@ -1,0 +1,67 @@
+# spring config
+spring:
+  application:
+      name: nowCoder Forum
+  thymeleaf:
+    cache: false
+  # DataSource: MySQL
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/forum?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 15
+      idle-timeout: 30000
+  # Mail Properties
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    protocol: smtps
+    properties:
+      mail:
+        smtp:
+            auth: true
+            starttls.enable: true
+            ssl.enabled: true
+  # Redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+
+
+# basic path
+server:
+  port: 8080
+  servlet:
+    context-path: /forum
+
+# mybatis properties
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.nowcoder.entity
+  configuration:
+    use-generated-keys: true
+    map-underscore-to-camel-case: true
+
+# log
+logging:
+  level:
+    org:
+      example:
+        nowcoder:
+         controller: debug
+
+nowCoder:
+  path:
+    domain: http://localhost:8080
+    upload: C:/User/23211/Documents/upload/
+
+
+
