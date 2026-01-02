@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.example.nowcoder.mapper.DiscussPostMapper">
+
+    <select id="selectDiscussPosts" resultType="org.example.nowcoder.entity.DiscussPost">
+        select * from discuss_post
+        <where>
+            status!=2
+            <if test="userId!=0">
+                and user_id=#{userId}
+            </if>
+            order by type desc, create_time desc
+            limit #{offset},#{limit}
+        </where>
+    </select>
+    <select id="selectDiscussPostRows" resultType="java.lang.Integer">
+        select count(id)
+        from discuss_post
+        <where>
+            status!=2
+            <if test="userId!=0">
+                and user_id=#{userId}
+            </if>
+        </where>
+
+    </select>
+
+    <insert id="insertDiscussPost">
+        insert into discuss_post(user_id, title, content, type, status, create_time, comment_count, score)
+            values (#{userId}, #{title}, #{content}, #{type}, #{status}, #{createTime}, #{commentCount}, #{score})
+    </insert>
+
+    <select id="selectDiscussPostById" resultType="org.example.nowcoder.entity.DiscussPost">
+        select * from discuss_post where id=#{id}
+    </select>
+
+    <update id="updateCommentCount">
+        update discuss_post set comment_count=#{commentCount} where id=#{id}
+    </update>
+
+
+</mapper>
