@@ -63,5 +63,10 @@ nowCoder:
     domain: http://localhost:8080
     upload: C:/User/23211/Documents/upload/
 
+# page helper
+pageHelper:
+  helper-dialect: mysql
+  reasonable: true
+
 
 
