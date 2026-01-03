@@ -69,6 +69,3 @@ nowCoder:
 pageHelper:
   helper-dialect: mysql
   reasonable: true
-
-
-

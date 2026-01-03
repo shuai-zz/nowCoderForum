@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Date;
+
 /**
  * @author 23211
  */
@@ -22,5 +24,5 @@ public class User {
     // 账户激活码
     private String activationCode;
     private String avatarUrl;
-    private int createTime;
+    private Date createTime;
 }

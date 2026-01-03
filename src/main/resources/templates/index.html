@@ -9,4 +9,247 @@
     <link rel="stylesheet" th:href="@{/css/global.css}"/>
     <title>牛客论坛</title>
 </head>
+<body>
+<div class="nk-container">
+
+    <header class="bg-dark sticky-top" th:fragment="header">
+        <div class="container">
+
+            <nav class="navbar navbar-expand-lg navbar-dark">
+                <!-- logo -->
+                <a class="navbar-brand" href="#"></a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse"
+                        data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav mr-auto">
+                        <li class="nav-item ml-3 btn-group-vertical">
+                            <a class="nav-link" th:href="@{/index}">Homepage</a>
+                        </li>
+                        <li class="nav-item ml-3 btn-group-vertical" th:if="${loginUser!=null}">
+                            <a class="nav-link position-relative" th:href="@{/letter/list}">Messages<span
+                                    class="badge badge-danger">12</span></a>
+                        </li>
+                        <li class="nav-item ml-3 btn-group-vertical" th:if="${loginUser==null}">
+                            <a class="nav-link" th:href="@{/register}">Register</a>
+                        </li>
+                        <li class="nav-item ml-3 btn-group-vertical" th:if="${loginUser==null}">
+                            <a class="nav-link" th:href="@{/login}">Log in</a>
+                        </li>
+                        <li class="nav-item ml-3 btn-group-vertical dropdown" th:if="${loginUser!=null}">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                               data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <img th:src="${loginUser.avatarUrl}" class="rounded-circle"
+                                     style="width:30px;"/>
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                <a class="dropdown-item text-center" th:href="@{|/user/profile/${loginUser.id}|}">Profile</a>
+                                <a class="dropdown-item text-center" th:href="@{/user/setting}">Setting</a>
+                                <a class="dropdown-item text-center" th:href="@{/logout}">Log out</a>
+                                <div class="dropdown-divider"></div>
+                                <span class="dropdown-item text-center text-secondary" th:utext="${loginUser.username}">Example</span>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <form class="form-inline my-2 my-lg-0" action="site/search.html">
+                        <input class="form-control mr-sm-2" type="search" aria-label="Search"/>
+                        <button class="btn btn-outline-light my-2 my-sm-0" type="submit">Search</button>
+                    </form>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+
+    <div class="main">
+        <div class="container">
+            <div class="position-relative">
+                <!-- 筛选条件 -->
+                <ul class="nav nav-tabs mb-3">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">New</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Hot</a>
+                    </li>
+                </ul>
+                <button type="button" class="btn btn-primary btn-sm position-absolute rt-0" data-toggle="modal"
+                        data-target="#publishModal" th:if="${loginUser!=null}">Go to publish
+                </button>
+            </div>
+            <!-- pop-up -->
+            <div class="modal fade" id="publishModal" tabindex="-1" role="dialog" aria-labelledby="publishModalLabel"
+                 aria-hidden="true">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="publishModalLabel">New Post</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <form>
+                                <div class="form-group">
+                                    <label for="recipient-name" class="col-form-label">Title：</label>
+                                    <input type="text" class="form-control" id="recipient-name">
+                                </div>
+                                <div class="form-group">
+                                    <label for="message-text" class="col-form-label">Text：</label>
+                                    <textarea class="form-control" id="message-text" rows="15"></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="publishBtn">Publish</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Tips -->
+            <div class="modal fade" id="hintModal" tabindex="-1" role="dialog" aria-labelledby="hintModalLabel"
+                 aria-hidden="true">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="hintModalLabel">Hint</h5>
+                        </div>
+                        <div class="modal-body" id="hintBody">
+                            Published!
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- post list -->
+            <ul class="list-unstyled">
+                <li class="media pb-3 pt-3 mb-3 border-bottom" th:each="map:${discussPosts}">
+                    <a th:href="@{|/user/profile/${map.user.id}|}">
+                        <img th:src="${map.user.avatarUrl}" class="mr-4 rounded-circle" alt="用户头像"
+                             style="width:50px;height:50px;">
+                    </a>
+                    <div class="media-body">
+                        <h6 class="mt-0 mb-3">
+                            <a th:href="@{|/discuss/detail/${map.post.id}|}" th:utext="${map.post.title}">Prepare for
+                                recruitment and practice interview
+                                questions, get it all done in one month!</a>
+                            <span class="badge badge-secondary bg-primary" th:if="${map.post.type==1}">Pin</span>
+                            <span class="badge badge-secondary bg-danger" th:if="${map.post.status==1}">Feature</span>
+                        </h6>
+                        <div class="text-muted font-size-12">
+                            <u class="mr-3" th:utext="${map.user.username}">GGBOND</u> Published on <b
+                                th:text="${map.post.createTime}">15/04/2019 15:32:18</b>
+                            <ul class="d-inline float-right">
+                                <li class="d-inline ml-2">Liked <span th:text="${map.likeCount}">11</span></li>
+                                <li class="d-inline ml-2">|</li>
+                                <li class="d-inline ml-2">Reply <span th:text="${map.post.commentCount}">7</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+
+            <!-- pagination -->
+            <nav class="mt-5" th:if="${page.total>0}" th:fragment="pagination">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item">
+                        <a class="page-link" th:href="@{${page.path}(pageNum=1)}">First</a>
+                    </li>
+                    <li th:class="|page-item ${page.pageNum==1?'disabled':''}|">
+                        <a class="page-link" th:href="@{${page.path}(pageNum=${page.pageNum - 1})}">Prev</a>
+
+                    <li th:class="|page-item ${pageNum==page.pageNum ? 'active' : ''}|"
+                        th:each="pageNum : ${page.navigatepageNums}">
+                        <a class="page-link" th:href="@{${page.path}(pageNum=${pageNum})}" th:text="${pageNum}"></a>
+                    </li>
+                    <!--                    <li th:class="|page-item ${i==page.pageNum?'active':''}|"-->
+                    <!--                        th:each="i:${#numbers.sequence(page.startNum,page.endNum)}">-->
+                    <!--                        &lt;!&ndash;                        <a class="page-link" href="#" th:text="${i}">1</a>&ndash;&gt;-->
+                    <!--                        <a class="page-link" th:href="@{${page.path}(pageNum=${i})}" th:text="${i}"></a>-->
+                    <!--                    </li>-->
+                    <li th:class="|page-item ${page.pageNum==page.pages?'disabled':''}|">
+                        <a class="page-link" th:href="@{${page.path}(pageNum=${page.pageNum + 1})}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" th:href="@{${page.path}(pageNum=${page.pages})}">End</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+
+    <footer class="bg-dark" th:fragment="footer">
+        <div class="container">
+            <div class="row">
+
+                <div class="col-4 qrcode">
+                    <img src="https://uploadfiles.nowcoder.com/app/app_download.png" class="img-thumbnail"
+                         style="width:136px;"/>
+                </div>
+
+                <div class="col-8 detail-info">
+                    <div class="row">
+                        <div class="col">
+                            <ul class="nav">
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" href="#">About us</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" href="#">Join us</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" href="#">Feedback</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" href="#">Corporate Services</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" href="#">Contact us</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" href="#">Disclaimer</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" href="#">Links</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <ul class="nav btn-group-vertical company-info">
+                                <li class="nav-item text-white-50">
+                                    Company Address: 799 Alfred Street, QLD 4000, Australia
+                                </li>
+                                <li class="nav-item text-white-50">
+                                    Contact: 0459987654 flow@outlook.com
+                                </li>
+                                <li class="nav-item text-white-50">
+                                    FlowTech©2024 All rights reserved
+                                </li>
+                                <li class="nav-item text-white-50">
+                                    We hope you are happy every day.
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script th:src="@{/js/global.js}"></script>
+<script th:src="@{js/index.js}"></script>
+</body>
 </html>

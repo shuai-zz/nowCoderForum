@@ -2,6 +2,8 @@ package org.example.nowcoder.entity;
 
 import lombok.Data;
 
+import java.util.Date;
+
 /**
  * @author 23211
  */
@@ -13,7 +15,7 @@ public class DiscussPost {
     private String content;
     private int type;
     private int status;
-    private int createTime;
+    private Date createTime;
     private int commentCount;
     private double score;
 }
