@@ -1,0 +1,36 @@
+2026-01-03 15:31:48,752 INFO [main] o.e.n.MailTest [StartupInfoLogger.java:54] Starting MailTest using Java 21.0.9 with PID 77977 (started by user23211 in /home/user23211/Documents/workspace/nowCoder)
+2026-01-03 15:31:48,753 INFO [main] o.e.n.MailTest [SpringApplication.java:652] No active profile set, falling back to 1 default profile: "default"
+2026-01-03 15:31:49,426 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:291] Multiple Spring Data modules found, entering strict repository configuration mode
+2026-01-03 15:31:49,430 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:145] Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-01-03 15:31:49,458 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:213] Finished Spring Data repository scanning in 6 ms. Found 0 Redis repository interfaces.
+2026-01-03 15:31:50,230 INFO [main] o.s.b.a.l.ConditionEvaluationReportLogger [ConditionEvaluationReportLogger.java:82] 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-01-03 15:36:49,804 INFO [main] o.e.n.MailTest [StartupInfoLogger.java:54] Starting MailTest using Java 21.0.9 with PID 83771 (started by user23211 in /home/user23211/Documents/workspace/nowCoder)
+2026-01-03 15:36:49,806 INFO [main] o.e.n.MailTest [SpringApplication.java:652] No active profile set, falling back to 1 default profile: "default"
+2026-01-03 15:36:50,485 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:291] Multiple Spring Data modules found, entering strict repository configuration mode
+2026-01-03 15:36:50,489 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:145] Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-01-03 15:36:50,515 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:213] Finished Spring Data repository scanning in 6 ms. Found 0 Redis repository interfaces.
+2026-01-03 15:36:51,195 INFO [main] o.s.b.w.a.WelcomePageHandlerMapping [WelcomePageHandlerMapping.java:60] Adding welcome page template: index
+2026-01-03 15:36:52,059 INFO [main] o.e.n.MailTest [StartupInfoLogger.java:60] Started MailTest in 2.651 seconds (process running for 3.606)
+2026-01-03 15:38:42,889 INFO [main] o.e.n.MailTest [StartupInfoLogger.java:54] Starting MailTest using Java 21.0.9 with PID 84976 (started by user23211 in /home/user23211/Documents/workspace/nowCoder)
+2026-01-03 15:38:42,892 INFO [main] o.e.n.MailTest [SpringApplication.java:652] No active profile set, falling back to 1 default profile: "default"
+2026-01-03 15:38:43,460 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:291] Multiple Spring Data modules found, entering strict repository configuration mode
+2026-01-03 15:38:43,463 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:145] Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-01-03 15:38:43,485 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:213] Finished Spring Data repository scanning in 6 ms. Found 0 Redis repository interfaces.
+2026-01-03 15:38:44,155 INFO [main] o.s.b.w.a.WelcomePageHandlerMapping [WelcomePageHandlerMapping.java:60] Adding welcome page template: index
+2026-01-03 15:38:45,010 INFO [main] o.e.n.MailTest [StartupInfoLogger.java:60] Started MailTest in 2.489 seconds (process running for 3.423)
+2026-01-03 16:10:01,006 INFO [main] o.e.n.MailTest [StartupInfoLogger.java:54] Starting MailTest using Java 21.0.9 with PID 11196 (started by user23211 in /home/user23211/Documents/workspace/nowCoder)
+2026-01-03 16:10:01,008 INFO [main] o.e.n.MailTest [SpringApplication.java:652] No active profile set, falling back to 1 default profile: "default"
+2026-01-03 16:10:01,594 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:291] Multiple Spring Data modules found, entering strict repository configuration mode
+2026-01-03 16:10:01,598 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:145] Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-01-03 16:10:01,634 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:213] Finished Spring Data repository scanning in 6 ms. Found 0 Redis repository interfaces.
+2026-01-03 16:10:02,303 INFO [main] o.s.b.w.a.WelcomePageHandlerMapping [WelcomePageHandlerMapping.java:60] Adding welcome page template: index
+2026-01-03 16:10:03,060 INFO [main] o.e.n.MailTest [StartupInfoLogger.java:60] Started MailTest in 2.448 seconds (process running for 3.478)
+2026-01-03 16:12:14,128 INFO [main] o.e.n.MailTest [StartupInfoLogger.java:54] Starting MailTest using Java 21.0.9 with PID 13537 (started by user23211 in /home/user23211/Documents/workspace/nowCoder)
+2026-01-03 16:12:14,131 INFO [main] o.e.n.MailTest [SpringApplication.java:652] No active profile set, falling back to 1 default profile: "default"
+2026-01-03 16:12:14,731 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:291] Multiple Spring Data modules found, entering strict repository configuration mode
+2026-01-03 16:12:14,734 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:145] Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-01-03 16:12:14,770 INFO [main] o.s.d.r.c.RepositoryConfigurationDelegate [RepositoryConfigurationDelegate.java:213] Finished Spring Data repository scanning in 7 ms. Found 0 Redis repository interfaces.
+2026-01-03 16:12:15,507 INFO [main] o.s.b.w.a.WelcomePageHandlerMapping [WelcomePageHandlerMapping.java:60] Adding welcome page template: index
+2026-01-03 16:12:16,340 INFO [main] o.e.n.MailTest [StartupInfoLogger.java:60] Started MailTest in 2.651 seconds (process running for 3.751)
