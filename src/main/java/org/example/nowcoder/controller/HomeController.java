@@ -35,6 +35,8 @@ public class HomeController {
         List<Map<String, Object>> discussPosts=new ArrayList<>();
 
         page.setTotal(discussPostPageInfo.getTotal());
+        page.setPages(discussPostPageInfo.getPages());
+        page.setNavigatepageNums(discussPostPageInfo.getNavigatepageNums());
         page.setPath("/index");
 
         List<DiscussPost> list = discussPostPageInfo.getList();
