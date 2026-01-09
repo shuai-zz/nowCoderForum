@@ -1,9 +1,6 @@
 package org.example.nowcoder.mapper;
 
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.*;
 import org.example.nowcoder.entity.User;
 
 /**
@@ -23,6 +20,7 @@ public interface UserMapper {
 
     @Insert("insert into user(username,password,salt,email,type,status,activation_code,avatar_url,create_time) " +
             "values(#{username},#{password},#{salt},#{email},#{type},#{status},#{activationCode},#{avatarUrl},#{createTime})")
+    @Options(useGeneratedKeys = true, keyProperty = "id")
     int insertUser(User user);
 
     @Update("update user set status=#{status} where id=#{id}")

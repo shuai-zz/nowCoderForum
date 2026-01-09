@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 import java.util.*;
 
+import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_POST;
+
 /**
  * @author 23211
  */
@@ -26,8 +28,6 @@ public class HomeController {
     private final LikeService likeService;
     // 当userId为0时，查询所有用户
     private static final int ALL_USERS=0;
-    // 帖子点赞数
-    private static final int ENTITY_TYPE_POST=1;
 
     @GetMapping("/index")
     public String getIndex(Model model, Page page){
