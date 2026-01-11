@@ -1,7 +1,9 @@
 package org.example.nowcoder.controller;
 
+import com.google.code.kaptcha.Producer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.nowcoder.config.KaptchaConfig;
 import org.example.nowcoder.entity.User;
 import org.example.nowcoder.service.UserService;
 import org.springframework.stereotype.Controller;
@@ -11,6 +13,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import javax.imageio.ImageIO;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Map;
 
 import static org.example.nowcoder.utils.ForumConstant.ACTIVATION_REPEAT;
@@ -24,6 +32,7 @@ import static org.example.nowcoder.utils.ForumConstant.ACTIVATION_SUCCESS;
 @RequiredArgsConstructor
 public class LoginController {
     private final UserService userService;
+    private final Producer kaptchaProducer;
 
 
     @GetMapping("/register")
@@ -69,5 +78,26 @@ public class LoginController {
             model.addAttribute("target","/index");
         }
         return "/site/operate-result";
+    }
+
+    @GetMapping("/kaptcha")
+    public void getKaptcha(HttpServletResponse response, HttpSession session){
+        // 生成验证码
+        String text = kaptchaProducer.createText();
+        BufferedImage image = kaptchaProducer.createImage(text);
+
+        // 将验证码存入session
+        session.setAttribute("kaptcha", text);
+
+        // 将图片输出给浏览器
+        response.setContentType("image/png");
+        try {
+            OutputStream os=response.getOutputStream();
+            ImageIO.write(image, "png", os);
+        } catch (IOException e) {
+            log.error("Failed to output image:{}", e.getMessage());
+        }
+
+
     }
 }
