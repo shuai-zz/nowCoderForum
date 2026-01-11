@@ -4,7 +4,9 @@ import com.github.pagehelper.PageHelper;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.example.nowcoder.entity.DiscussPost;
+import org.example.nowcoder.entity.LoginTicket;
 import org.example.nowcoder.entity.User;
+import org.example.nowcoder.mapper.LoginTicketMapper;
 import org.example.nowcoder.mapper.UserMapper;
 import org.example.nowcoder.service.UserService;
 import org.example.nowcoder.utils.ForumUtil;
@@ -27,6 +29,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final MailClient mailClient;
     private final TemplateEngine templateEngine;
+    private final LoginTicketMapper loginTicketMapper;
 
     @Value("${nowCoder.path.domain}")
     private String domain;
@@ -102,14 +105,62 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public int activation(int userId, String code) {
-        User user=userMapper.selectById(userId);
-        if(user.getStatus()==1){
+        User user = userMapper.selectById(userId);
+        if (user.getStatus() == 1) {
             return ACTIVATION_REPEAT;
-        }else if(user.getActivationCode().equals(code)){
-            userMapper.updateStatus(userId,1);
+        } else if (user.getActivationCode().equals(code)) {
+            userMapper.updateStatus(userId, 1);
             return ACTIVATION_SUCCESS;
-        }else{
+        } else {
             return ACTIVATION_FAILURE;
         }
+    }
+
+    @Override
+    public Map<String, Object> login(String username, String password, int expiredSeconds) {
+        Map<String, Object> map = new HashMap<>();
+
+        if (StringUtils.isBlank(username)) {
+            map.put("usernameMsg", "Username cannot be empty");
+            return map;
+        }
+        if (StringUtils.isBlank(password)) {
+            map.put("passwordMsg", "Password cannot be empty");
+            return map;
+        }
+
+        // 验证账号
+        User user = userMapper.selectByName(username);
+        if (user == null) {
+            map.put("usernameMsg", "This username does not exist");
+            return map;
+        }
+        if (user.getStatus() == 0) {
+            map.put("usernameMsg", "This account has not been activated");
+            return map;
+        }
+
+        password = ForumUtil.md5(password + user.getSalt());
+        if (!user.getPassword().equals(password)) {
+            map.put("passwordMsg", "Password error");
+            return map;
+        }
+
+
+        // 生成登录凭证
+        LoginTicket loginTicket = new LoginTicket();
+        loginTicket.setUserId(user.getId());
+        loginTicket.setTicket(ForumUtil.generateUuid());
+        loginTicket.setStatus(0);
+        loginTicket.setExpired(new Date(System.currentTimeMillis() + expiredSeconds * 1000L));
+        loginTicketMapper.insertLoginTicket(loginTicket);
+        map.put("ticket", loginTicket.getTicket());
+        return map;
+
+    }
+
+    @Override
+    public void logout(String ticket) {
+        loginTicketMapper.updateStatus(ticket, 1);
     }
 }
