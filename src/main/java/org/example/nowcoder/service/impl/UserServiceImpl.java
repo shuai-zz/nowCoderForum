@@ -163,4 +163,10 @@ public class UserServiceImpl implements UserService {
     public void logout(String ticket) {
         loginTicketMapper.updateStatus(ticket, 1);
     }
+
+
+    @Override
+    public LoginTicket getLoginTicket(String ticket) {
+        return loginTicketMapper.selectByTicket(ticket);
+    }
 }

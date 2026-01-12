@@ -1,6 +1,7 @@
 package org.example.nowcoder.service;
 
 import org.example.nowcoder.entity.DiscussPost;
+import org.example.nowcoder.entity.LoginTicket;
 import org.example.nowcoder.entity.User;
 
 import java.util.List;
@@ -16,4 +17,6 @@ public interface UserService {
     Map<String, Object> login(String username, String password, int expiredSeconds);
 
     void logout(String ticket);
+
+    LoginTicket getLoginTicket(String ticket);
 }
