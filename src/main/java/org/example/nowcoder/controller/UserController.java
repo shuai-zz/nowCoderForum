@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.catalina.Host;
 import org.apache.commons.lang3.StringUtils;
+import org.example.nowcoder.annotation.LoginRequired;
 import org.example.nowcoder.entity.User;
 import org.example.nowcoder.service.UserService;
 import org.example.nowcoder.utils.ForumUtil;
@@ -44,11 +45,13 @@ public class UserController {
     private String contextPath;
 
 
+    @LoginRequired
     @GetMapping("/setting")
     public String getSettingPage(){
         return "/site/setting";
     }
 
+    @LoginRequired
     @PostMapping("/upload")
     public String uploadHeader(MultipartFile avatarImg, Model model){
        if(avatarImg==null){
