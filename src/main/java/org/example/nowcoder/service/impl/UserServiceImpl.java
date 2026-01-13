@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import tools.jackson.databind.node.StringNode;
 
 import java.util.*;
 
@@ -168,5 +169,36 @@ public class UserServiceImpl implements UserService {
     @Override
     public LoginTicket getLoginTicket(String ticket) {
         return loginTicketMapper.selectByTicket(ticket);
+    }
+
+    @Override
+    public int updateAvatar(int id, String avatarUrl) {
+        return userMapper.updateAvatar(id, avatarUrl);
+    }
+
+    @Override
+    public Map<String, Object> updatePassword(int id, String oldPassword, String newPassword) {
+        HashMap<String, Object> map = new HashMap<>();
+        User user = userMapper.selectById(id);
+        oldPassword = ForumUtil.md5(oldPassword + user.getSalt());
+        if(!user.getPassword().equals(oldPassword)){
+            map.put("oldPasswordMsg","Incorrect Password");
+            return map;
+        }
+        if(newPassword.length()<8){
+            map.put("newPasswordMsg","Password length must be greater than 8");
+            return map;
+        }
+        if(newPassword.equals(oldPassword)){
+            map.put("newPasswordMsg","New password cannot be the same as the old password");
+            return map;
+        }
+        try{
+            int i = userMapper.updatePassword(id, ForumUtil.md5(newPassword + user.getSalt()));
+        }catch (Exception e){
+            map.put("newPasswordMsg","Failed to update password");
+            return map;
+        }
+        return map;
     }
 }

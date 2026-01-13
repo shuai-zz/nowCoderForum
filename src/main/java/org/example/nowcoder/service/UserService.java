@@ -19,4 +19,8 @@ public interface UserService {
     void logout(String ticket);
 
     LoginTicket getLoginTicket(String ticket);
+
+    int updateAvatar(int id, String avatarUrl);
+
+    Map<String, Object> updatePassword(int id, String oldPassword, String newPassword);
 }

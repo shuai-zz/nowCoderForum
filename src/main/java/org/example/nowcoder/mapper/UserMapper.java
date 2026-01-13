@@ -26,7 +26,7 @@ public interface UserMapper {
     @Update("update user set status=#{status} where id=#{id}")
     int updateStatus(int id, int status);
 
-    @Update("update user set activation_code= #{activationCode} where id= #{id}")
+    @Update("update user set avatar_url= #{avatarUrl} where id= #{id}")
     int updateAvatar(int id, String avatarUrl);
 
     @Update("update user set password= #{password} where id= #{id}")

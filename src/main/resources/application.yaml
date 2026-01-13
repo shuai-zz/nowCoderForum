@@ -63,7 +63,7 @@ logging:
 nowCoder:
   path:
     domain: http://localhost:8080
-    upload: C:/User/23211/Documents/upload/
+    upload: ${UPLOAD_PATH}
 
 # page helper
 pageHelper:
