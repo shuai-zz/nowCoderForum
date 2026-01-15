@@ -44,12 +44,12 @@ public class SensitiveFilter {
     private void addKeyword(String keyword) {
         TrieNode node = rootNode;
         for (int i = 0; i < keyword.length(); ++i) {
-            char c=keyword.charAt(i);
+            char c = keyword.charAt(i);
             TrieNode subNode = node.getSubNode(c);
 
             // 没有该前缀时
-            if(subNode==null){
-               // 初始化子节点
+            if (subNode == null) {
+                // 初始化子节点
                 subNode = new TrieNode();
                 node.addSubNode(c, subNode);
             }
@@ -57,7 +57,7 @@ public class SensitiveFilter {
             // 指向子节点，进入下一个循环
             node = subNode;
             // 设置结束标识
-            if(i==keyword.length()-1){
+            if (i == keyword.length() - 1) {
                 node.setCompleteWord(true);
             }
         }
@@ -80,18 +80,20 @@ public class SensitiveFilter {
 
         while (begin < text.length()) {
             if (position < text.length()) {
-                Character c = text.charAt(position);
+                char c = text.charAt(position);
+                Character lowerCaseC = Character.toLowerCase(c);
                 //  跳过符号
-                if (isSymbol(c)) {
+                if (isSymbol(lowerCaseC)) {
                     if (tempNode == rootNode) {
+                        // 符号在中间，跳过符号继续匹配
                         ++begin;
-                        stringBuilder.append(c);
+                        stringBuilder.append(lowerCaseC);
                     }
                     ++position;
                     continue;
                 }
                 // 检查下级节点
-                tempNode = tempNode.getSubNode(c);
+                tempNode = tempNode.getSubNode(lowerCaseC);
                 if (tempNode == null) {
                     // 以begin开头的字符串不是敏感词
                     stringBuilder.append(text.charAt(begin));
