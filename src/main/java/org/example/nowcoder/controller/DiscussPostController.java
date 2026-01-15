@@ -2,14 +2,15 @@ package org.example.nowcoder.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.example.nowcoder.entity.DiscussPost;
+import org.example.nowcoder.entity.Page;
 import org.example.nowcoder.entity.User;
 import org.example.nowcoder.service.DiscussPostService;
+import org.example.nowcoder.service.UserService;
 import org.example.nowcoder.utils.ForumUtil;
 import org.example.nowcoder.utils.HostHolder;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
 
@@ -22,6 +23,7 @@ import java.util.Date;
 public class DiscussPostController {
     private final DiscussPostService discussPostService;
     private final HostHolder hostHolder;
+    private final UserService userService;
 
     @PostMapping("/add")
     @ResponseBody
@@ -39,6 +41,20 @@ public class DiscussPostController {
 
         // 报错的情况将来统一处理
         return ForumUtil.getJsonString(0,"Post successfully!");
+
+    }
+
+    @GetMapping("/detail/{discussPostId}")
+    public String getDiscussPost(@PathVariable("discussPostId") int discussPostId, Model model, Page page){
+        // 查询帖子
+        DiscussPost post=discussPostService.findDiscussPostById(discussPostId);
+        model.addAttribute("post",post);
+
+        User user = userService.findUserById(post.getUserId());
+        model.addAttribute("user",user);
+
+        return "/site/discuss-detail";
+
 
     }
 }
