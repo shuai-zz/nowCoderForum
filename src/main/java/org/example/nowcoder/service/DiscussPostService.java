@@ -9,4 +9,5 @@ import org.example.nowcoder.entity.DiscussPost;
  */
 public interface DiscussPostService {
     PageInfo<DiscussPost> selectDiscussPosts(int userId, int pageNum, int pageSize);
+    int insertDiscussPost(DiscussPost discussPost);
 }
