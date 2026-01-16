@@ -9,4 +9,6 @@ import org.example.nowcoder.entity.Comment;
 public interface CommentService {
     PageInfo<Comment> findCommentsByEntity(int entityType, int entityId, int pageNum, int pageSize);
     int findCommentCount(int entityType, int entityId);
+
+    int addComment(Comment comment);
 }
