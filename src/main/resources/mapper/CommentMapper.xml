@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.example.nowcoder.mapper.CommentMapper">
+
+    <select id="selectCommentsByEntity" resultType="org.example.nowcoder.entity.Comment">
+        select * from comment
+        <where>
+            entity_type=#{entityType}
+            and entity_id=#{entityId}
+            and status=0
+            order by create_time asc
+        </where>
+    </select>
+    <select id="selectCountByEntity" resultType="java.lang.Integer">
+            select count(*) from comment
+        <where>
+            entity_type=#{entityType}
+            and entity_id=#{entityId}
+            and status=0
+        </where>
+    </select>
+</mapper>
