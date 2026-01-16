@@ -9,6 +9,7 @@
     <select id="selectConversations" resultType="org.example.nowcoder.entity.Message">
         select * from message
         where id in (
+            /*** 会话中最新消息 ***/
             select max(id)
             from message
             where status !=2
@@ -17,7 +18,6 @@
             group by conversation_id
         )
         order by create_time desc
-        limit #{offset},#{limit}
     </select>
     <select id="selectConversationCount" resultType="java.lang.Integer">
         select count(m.maxid)
@@ -28,4 +28,29 @@
              and(from_id=#{userId} or to_id=#{userId})
              group by conversation_id) as m
     </select>
+    <select id="selectDms" resultType="org.example.nowcoder.entity.Message">
+        select * from message
+        where status!=2
+            and from_id!=1
+            and conversation_id =#{conversationId}
+        order by id desc
+
+    </select>
+    <select id="selectDmCount" resultType="java.lang.Integer">
+        select count(id)
+        from message
+        where status!=2
+            and from_id!=1
+            and conversation_id = #{conversationId}
+    </select>
+    <select id="selectUnreadCount" resultType="java.lang.Integer">
+        select count(*) from message
+        where status=0
+        and from_id!=1
+        and to_id=#{userId}
+        <if test="conversationId!=null">
+            conversation_id=#{conversationId}
+        </if>
+    </select>
+
 </mapper>
