@@ -2,6 +2,8 @@ package org.example.nowcoder.entity;
 
 import lombok.Data;
 
+import java.util.Date;
+
 /**
  * @author 23211
  */
@@ -18,5 +20,5 @@ public class Message {
      * 2-删除
      */
     private int status;
-    private String createTime;
+    private Date createTime;
 }

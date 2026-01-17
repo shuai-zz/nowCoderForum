@@ -9,17 +9,17 @@ import org.example.nowcoder.entity.Page;
 import org.example.nowcoder.entity.User;
 import org.example.nowcoder.service.MessageService;
 import org.example.nowcoder.service.UserService;
+import org.example.nowcoder.utils.ForumUtil;
 import org.example.nowcoder.utils.HostHolder;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author zhaoshuai
@@ -111,5 +111,28 @@ public class MessageController {
         } else {
             return userService.findUserById(id0);
         }
+    }
+
+    @PostMapping("/letter/send")
+    @ResponseBody
+    public String sendLetter(String toName, String content){
+        User targetUser=userService.findUserByName(toName);
+        if(targetUser==null){
+            return ForumUtil.getJsonString(1,"target user does not exist");
+        }
+
+        Message message = new Message();
+        message.setFromId(hostHolder.getUser().getId());
+        message.setToId(targetUser.getId());
+        if (message.getFromId()<message.getToId()){
+            message.setConversationId(message.getFromId()+"_"+message.getToId());
+        }else{
+            message.setConversationId(message.getToId()+"_"+message.getFromId());
+        }
+        message.setContent(content);
+        message.setCreateTime(new Date());
+        messageService.addMessage(message);
+        return ForumUtil.getJsonString(0);
+
     }
 }

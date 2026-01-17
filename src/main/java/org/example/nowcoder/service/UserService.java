@@ -23,4 +23,6 @@ public interface UserService {
     int updateAvatar(int id, String avatarUrl);
 
     Map<String, Object> updatePassword(int id, String oldPassword, String newPassword);
+
+    User findUserByName(String toName);
 }

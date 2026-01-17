@@ -201,4 +201,9 @@ public class UserServiceImpl implements UserService {
         }
         return map;
     }
+
+    @Override
+    public User findUserByName(String name) {
+        return userMapper.selectByName(name);
+    }
 }

@@ -6,7 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.example.nowcoder.entity.Message;
 import org.example.nowcoder.mapper.MessageMapper;
 import org.example.nowcoder.service.MessageService;
+import org.example.nowcoder.utils.SensitiveFilter;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;
 
@@ -17,6 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MessageServiceImpl implements MessageService {
     private final MessageMapper messageMapper;
+    private final SensitiveFilter sensitiveFilter;
 
     @Override
     public PageInfo<Message> findConversations(int userId, int pageNum, int pageSize) {
@@ -46,5 +49,17 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public int findUnreadCount(int userId, String conversationId) {
         return messageMapper.selectUnreadCount(userId, conversationId);
+    }
+
+    @Override
+    public int addMessage(Message message) {
+        message.setContent(HtmlUtils.htmlEscape(message.getContent()));
+        message.setContent(sensitiveFilter.filter(message.getContent()));
+        return messageMapper.insertMessage(message);
+    }
+
+    @Override
+    public int updateStatus(List<Integer> ids, int status) {
+        return messageMapper.updateStatus(ids, status);
     }
 }

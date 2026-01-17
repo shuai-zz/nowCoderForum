@@ -15,4 +15,6 @@ public interface MessageService {
     PageInfo<Message> findDms(String conversationId, int pageNum, int pageSize);
     int findDmCount(String conversationId);
     int findUnreadCount(int userId, String conversationId);
+    int addMessage(Message message);
+    int updateStatus(List<Integer> ids, int status);
 }
