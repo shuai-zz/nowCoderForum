@@ -46,7 +46,7 @@ public class HomeController {
                 map.put("post",post);
                 User user=userService.findUserById(post.getUserId());
                 map.put("user",user);
-                long likeCount=likeService.queryEntityLikeCount(ENTITY_TYPE_POST,post.getId());
+                long likeCount=likeService.findEntityLikeCount(ENTITY_TYPE_POST,post.getId());
                 map.put("likeCount",likeCount);
                 discussPosts.add(map);
             }

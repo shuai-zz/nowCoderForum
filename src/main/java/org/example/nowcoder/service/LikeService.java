@@ -4,5 +4,7 @@ package org.example.nowcoder.service;
  * @author 23211
  */
 public interface LikeService {
-    long queryEntityLikeCount(int entityTypePost, int entityId);
+    void like(int userId, int entityType, int entityId);
+    long findEntityLikeCount(int entityTypePost, int entityId);
+    int findEntityLikeStatus(int userId, int entityTypePost, int entityId);
 }
