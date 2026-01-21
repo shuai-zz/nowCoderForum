@@ -7,6 +7,7 @@ import org.example.nowcoder.entity.LoginTicket;
  * @author 23211
  */
 @Mapper
+@Deprecated
 public interface LoginTicketMapper {
 
     @Insert("insert into login_ticket(user_id, ticket, status, expired) values (#{userId}, #{ticket}, #{status}, #{expired})")
