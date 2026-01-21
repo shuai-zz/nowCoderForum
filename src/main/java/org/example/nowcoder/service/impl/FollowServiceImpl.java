@@ -2,7 +2,9 @@ package org.example.nowcoder.service.impl;
 
 import jakarta.websocket.OnClose;
 import lombok.RequiredArgsConstructor;
+import org.example.nowcoder.entity.User;
 import org.example.nowcoder.service.FollowService;
+import org.example.nowcoder.service.UserService;
 import org.example.nowcoder.utils.RedisKeyUtil;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataAccessException;
@@ -11,6 +13,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.stereotype.Service;
 
+import java.util.*;
+
+import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_USER;
+
 /**
  * @author zhaoshuai
  */
@@ -18,6 +24,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class FollowServiceImpl implements FollowService {
     private final RedisTemplate<String, Object> redisTemplate;
+    private final UserService userService;
+
     @Override
     public void follow(int userId, int entityType, int entityId) {
 
@@ -79,5 +87,39 @@ public class FollowServiceImpl implements FollowService {
     public boolean hasFollowed(int userId, int entityType, int entityId) {
         String followeeKey = RedisKeyUtil.getFolloweeKey(userId, entityType);
         return redisTemplate.opsForZSet().score(followeeKey, entityId) != null;
+    }
+
+    // 查询某个用户关注的人
+    @Override
+    public List<Map<String, Object>> findFollowees(int userId, int pageNum, int pageSize) {
+        String followeeKey = RedisKeyUtil.getFolloweeKey(userId, ENTITY_TYPE_USER);
+        return getUser(pageNum, pageSize, followeeKey);
+    }
+
+    // 查询某个用户粉丝
+    @Override
+    public List<Map<String, Object>> findFollowers(int userId, int pageNum, int pageSize) {
+        String followerKey = RedisKeyUtil.getFollowerKey(ENTITY_TYPE_USER, userId);
+        return getUser(pageNum, pageSize, followerKey);
+    }
+
+    private List<Map<String, Object>> getUser(int pageNum, int pageSize, String redisKey) {
+        int start=(pageNum - 1) * pageSize;
+        int end = start + pageSize - 1;
+
+        Set<Object> targetIds = redisTemplate.opsForZSet().reverseRange(redisKey, start, end);
+        if (targetIds == null) {
+            return null;
+        }
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Object targetId : targetIds) {
+            Map<String, Object> map = new HashMap<>();
+            User user = userService.findUserById((Integer) targetId);
+            map.put("user", user);
+            Double score = redisTemplate.opsForZSet().score(redisKey, targetId);
+            map.put("followTime", new Date(score.longValue()));
+            list.add(map);
+        }
+        return list;
     }
 }
