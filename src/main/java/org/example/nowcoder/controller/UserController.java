@@ -8,6 +8,8 @@ import org.apache.catalina.Host;
 import org.apache.commons.lang3.StringUtils;
 import org.example.nowcoder.annotation.LoginRequired;
 import org.example.nowcoder.entity.User;
+import org.example.nowcoder.service.FollowService;
+import org.example.nowcoder.service.LikeService;
 import org.example.nowcoder.service.UserService;
 import org.example.nowcoder.utils.ForumUtil;
 import org.example.nowcoder.utils.HostHolder;
@@ -26,6 +28,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map;
 
+import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_USER;
+
 /**
  * @author zhaoshuai
  */
@@ -36,6 +40,8 @@ import java.util.Map;
 public class UserController {
     private final HostHolder hostHolder;
     private final UserService userService;
+    private final LikeService likeService;
+    private final FollowService followService;
 
     @Value("${nowCoder.path.upload}")
     private String uploadPath;
@@ -129,6 +135,21 @@ public class UserController {
             throw new RuntimeException("User does not exist");
         }
         model.addAttribute("user",user);
+
+        long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_USER, userId);
+        model.addAttribute("likeCount",likeCount);
+
+        long followeeCount = followService.findFolloweeCount(userId, ENTITY_TYPE_USER);
+        model.addAttribute("followeeCount",followeeCount);
+
+        long followerCount = followService.findFollowerCount(ENTITY_TYPE_USER, userId);
+        model.addAttribute("followerCount",followerCount);
+
+        boolean hasFollowed=false;
+        if(hostHolder.getUser()!=null){
+            hasFollowed = followService.hasFollowed(hostHolder.getUser().getId(), ENTITY_TYPE_USER, userId);
+        }
+        model.addAttribute("hasFollowed",hasFollowed);
         return "site/profile";
     }
 }
