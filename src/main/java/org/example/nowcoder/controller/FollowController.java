@@ -2,8 +2,10 @@ package org.example.nowcoder.controller;
 
 import com.github.pagehelper.PageInfo;
 import lombok.RequiredArgsConstructor;
+import org.example.nowcoder.entity.Event;
 import org.example.nowcoder.entity.Page;
 import org.example.nowcoder.entity.User;
+import org.example.nowcoder.event.EventProducer;
 import org.example.nowcoder.service.FollowService;
 import org.example.nowcoder.service.UserService;
 import org.example.nowcoder.utils.ForumUtil;
@@ -30,6 +32,7 @@ public class FollowController {
     private final FollowService followService;
     private final HostHolder hostHolder;
     private final UserService userService;
+    private final EventProducer eventProducer;
 
     @PostMapping("/follow")
     @ResponseBody
@@ -37,6 +40,15 @@ public class FollowController {
         User user = hostHolder.getUser();
 
         followService.follow(user.getId(), entityType, entityId);
+
+        // 触发关注事件
+        Event event = new Event()
+                .setTopic("FOLLOW")
+                .setUserId(user.getId())
+                .setEntityType(entityType)
+                .setEntityId(entityId)
+                .setEntityUserId(entityId);
+        eventProducer.fireEvent(event);
         return ForumUtil.getJsonString(0, "Followed");
     }
 
@@ -60,7 +72,7 @@ public class FollowController {
         page.setPageSize(5);
         page.setTotal((int) followService.findFolloweeCount(userId, ENTITY_TYPE_USER));
         page.setPath("/followees/" + userId);
-        page.setPages((int) (page.getTotal() % page.getPageSize()==0?page.getTotal()/page.getPageSize():page.getTotal()/page.getPageSize()+1));
+        page.setPages((int) (page.getTotal() % page.getPageSize() == 0 ? page.getTotal() / page.getPageSize() : page.getTotal() / page.getPageSize() + 1));
         page.setNavigatepageNums(getNavigatePageNums(page.getPages(), page.getPageNum()));
 
         List<Map<String, Object>> userList = followService.findFollowees(userId, page.getPageNum(), page.getPageSize());
@@ -85,7 +97,7 @@ public class FollowController {
         page.setPageSize(5);
         page.setTotal((int) followService.findFollowerCount(ENTITY_TYPE_USER, userId));
         page.setPath("/followers/" + userId);
-        page.setPages((int) (page.getTotal() % page.getPageSize()==0?page.getTotal()/page.getPageSize():page.getTotal()/page.getPageSize()+1));
+        page.setPages((int) (page.getTotal() % page.getPageSize() == 0 ? page.getTotal() / page.getPageSize() : page.getTotal() / page.getPageSize() + 1));
         page.setNavigatepageNums(getNavigatePageNums(page.getPages(), page.getPageNum()));
 
         List<Map<String, Object>> userList = followService.findFollowers(userId, page.getPageNum(), page.getPageSize());

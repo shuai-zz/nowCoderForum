@@ -1,5 +1,7 @@
 package org.example.nowcoder.utils;
 
+import org.apache.kafka.common.protocol.types.Field;
+
 /**
  * @author 23211
  */
@@ -23,4 +25,10 @@ public interface ForumConstant {
     int ENTITY_TYPE_COMMENT = 2;
     //user
     int ENTITY_TYPE_USER = 3;
+
+    String TOPIC_COMMENT = "comment";
+    String TOPIC_LIKE = "like";
+    String TOPIC_FOLLOW = "follow";
+
+    int SYSTEM_USER_ID = 1;
 }

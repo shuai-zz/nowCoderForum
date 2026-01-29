@@ -26,4 +26,9 @@
             and status=0
         </where>
     </select>
+    <select id="selectCommentById" resultType="org.example.nowcoder.entity.Comment">
+        select *
+        from comment
+        where id=#{id};
+    </select>
 </mapper>

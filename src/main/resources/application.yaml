@@ -1,7 +1,24 @@
 # spring config
 spring:
+  kafka:
+    bootstrap-servers: localhost:9092  # Docker部署时需注意网络映射
+    consumer:
+      group-id: default-group          # 修正拼写错误：gourp-id -> group-id
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest       # 无偏移量时从最早开始消费
+      enable-auto-commit: true          # 自动提交偏移量
+      auto-commit-interval-ms: 500      # 自动提交间隔
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all                         # 所有副本确认后才返回成功
+      retries: 3                        # 重试次数
+      batch-size: 16384                 # 批处理大小
+      linger-ms: 1                      # 延迟1ms发送（攒批）
+      buffer-memory: 33554432           # 生产者缓冲区大小
   application:
-      name: nowCoder Forum
+    name: nowCoder Forum
   config:
     import: optional:file:.env[.properties]
   thymeleaf:
@@ -27,9 +44,9 @@ spring:
     properties:
       mail:
         smtp:
-            auth: true
-            starttls.enable: true
-            ssl.enabled: true
+          auth: true
+          starttls.enable: true
+          ssl.enabled: true
   # Redis
   data:
     redis:
@@ -58,7 +75,7 @@ logging:
     org:
       example:
         nowcoder:
-         controller: debug
+          controller: debug
 
 nowCoder:
   path:
