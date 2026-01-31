@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.nowcoder.entity.LoginTicket;
 import org.example.nowcoder.entity.User;
+import org.example.nowcoder.service.MessageService;
 import org.example.nowcoder.service.UserService;
 import org.example.nowcoder.utils.CookieUtil;
 import org.example.nowcoder.utils.HostHolder;
@@ -25,6 +26,7 @@ import java.util.Date;
 public class LoginTicketInterceptor implements HandlerInterceptor {
     private final UserService userService;
     private final HostHolder hostHolder;
+    private final MessageService messageService;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -49,7 +51,11 @@ public class LoginTicketInterceptor implements HandlerInterceptor {
     public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, @Nullable ModelAndView modelAndView) throws Exception {
         User user=hostHolder.getUser();
         if(user!=null&&modelAndView!=null){
+            int unreadLetterCount = messageService.findUnreadCount(user.getId(), null);
+            int unreadNoticeCount = messageService.findNoticeUnreadCount(user.getId(), null);
+
             modelAndView.addObject("loginUser",user);
+            modelAndView.addObject("messageUnread",unreadLetterCount+unreadNoticeCount);
         }
     }
 

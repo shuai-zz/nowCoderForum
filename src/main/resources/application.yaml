@@ -1,7 +1,7 @@
 # spring config
 spring:
   kafka:
-    bootstrap-servers: localhost:9092  # Docker部署时需注意网络映射
+    bootstrap-servers: localhost:29092  # Docker部署时需注意网络映射
     consumer:
       group-id: default-group          # 修正拼写错误：gourp-id -> group-id
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer

@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.HashMap;
 
+import static org.example.nowcoder.utils.ForumConstant.TOPIC_LIKE;
+
 /**
  * @author zhaoshuai
  */
@@ -43,7 +45,7 @@ public class LikeController {
         // 触发点赞事件
         if (likeStatus == 1) {
             Event event = new Event()
-                    .setTopic("LIKE")
+                    .setTopic(TOPIC_LIKE)
                     .setUserId(user.getId())
                     .setEntityType(entityType)
                     .setEntityId(entityId)

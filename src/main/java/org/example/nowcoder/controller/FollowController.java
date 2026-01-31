@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_USER;
+import static org.example.nowcoder.utils.ForumConstant.TOPIC_FOLLOW;
 
 /**
  * @author zhaoshuai
@@ -43,7 +44,7 @@ public class FollowController {
 
         // 触发关注事件
         Event event = new Event()
-                .setTopic("FOLLOW")
+                .setTopic(TOPIC_FOLLOW)
                 .setUserId(user.getId())
                 .setEntityType(entityType)
                 .setEntityId(entityId)

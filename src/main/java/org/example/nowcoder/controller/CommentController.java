@@ -17,8 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import java.security.PrivateKey;
 import java.util.Date;
 
-import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_COMMENT;
-import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_POST;
+import static org.example.nowcoder.utils.ForumConstant.*;
 
 /**
  * @author zhaoshuai
@@ -41,7 +40,7 @@ public class CommentController {
 
         // 触发评论事件
         Event event = new Event()
-                .setTopic("COMMENT")
+                .setTopic(TOPIC_COMMENT)
                 .setUserId(hostHolder.getUser().getId())
                 .setEntityId(comment.getEntityId())
                 .setEntityType(comment.getEntityType())
