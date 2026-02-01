@@ -39,7 +39,6 @@ public class EventConsumer {
 
         // 发送站内通知
         Message message = new Message();
-        log.info("----------------------I'm right here-----------------------------");
         message.setFromId(SYSTEM_USER_ID);
         message.setToId(event.getEntityUserId());
         message.setConversationId(event.getTopic());

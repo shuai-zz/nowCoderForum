@@ -159,7 +159,6 @@ public class MessageController {
     @GetMapping("/notice/list")
     public String getNoticeList(Model model) {
         User user = hostHolder.getUser();
-        System.out.println("-------------------------------------");
         // 查询评论类通知
         Message message = messageService.findLatestNotice(user.getId(), TOPIC_COMMENT);
         Map<String, Object> commentNotice = buildNoticeData(message, TOPIC_COMMENT, user.getId());
@@ -189,9 +188,11 @@ public class MessageController {
 
         page.setPageSize(5);
         page.setPath("/notice/detail/" + topic);
-        page.setTotal(messageService.findNoticeCount(user.getId(), topic));
 
         PageInfo<Message> noticePageInfo = messageService.findNotices(user.getId(), topic, page.getPageNum(), page.getPageSize());
+        page.setPages(noticePageInfo.getPages());
+        page.setTotal(noticePageInfo.getTotal());
+        page.setNavigatepageNums(noticePageInfo.getNavigatepageNums());
         List<Message> noticeList = noticePageInfo.getList();
         List<Map<String, Object>> notices = new ArrayList<>();
         if (noticeList != null) {
@@ -236,9 +237,8 @@ public class MessageController {
         notice.put("user", userService.findUserById((Integer) data.get("userId")));
         notice.put("entityType", data.get("entityType"));
         notice.put("entityId", data.get("entityId"));
-        if (!Objects.equals(topic, TOPIC_FOLLOW)) {
-            notice.put("postId", data.get("postId"));
-        }
+        notice.put("postId", data.get("postId"));
+
 
         notice.put("count", messageService.findNoticeCount(userId, topic));
         notice.put("unread", messageService.findNoticeUnreadCount(userId, topic));

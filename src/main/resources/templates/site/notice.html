@@ -46,7 +46,7 @@
                                 th:text="${#dates.format(commentNotice.message.createTime,'yyyy-MM-dd HH:mm:ss')}">2019-04-28 14:13:25</span>
 							</h6>
 							<div>
-								<a href="notice-detail.html">
+								<a th:href="@{/notice/detail/comment}">
                                     user
                                     <i th:utext="${commentNotice.user.username}">nowcoder</i>
                                     commented on your <b th:text="${commentNotice.entityType==1?'post':'comment'}">post</b> ...</a>
@@ -66,12 +66,12 @@
 								<span class="float-right text-muted font-size-12" th:text="${#dates.format(likeNotice.message.createTime,'yyyy-MM-dd HH:mm:ss')}">2019-04-28 14:13:25</span>
 							</h6>
 							<div>
-								<a href="notice-detail.html">
+								<a th:href="@{/notice/detail/like}">
                                     user
-                                    <i th:utext="likeNotice.user.username">nowcoder</i>
-                                    liked your <b th:text="likeNotice.entityType==1?'post':'comment'">post</b> ...</a>
+                                    <i th:utext="${likeNotice.user.username}">nowcoder</i>
+                                    liked your <b th:text="${likeNotice.entityType==1?'post':'comment'}">post</b> ...</a>
 								<ul class="d-inline font-size-12 float-right">
-									<li class="d-inline ml-2"><span class="text-primary" ><i th:text="likeNotice.count">3</i> conversations in total</span></li>
+									<li class="d-inline ml-2"><span class="text-primary" ><i th:text="${likeNotice.count}">3</i> conversations in total</span></li>
 								</ul>
 							</div>
 						</div>
@@ -86,7 +86,7 @@
 								<span class="float-right text-muted font-size-12" th:text="${#dates.format(followNotice.message.createTime,'yyyy-MM-dd HH:mm:ss')}">2019-04-28 14:13:25</span>
 							</h6>
 							<div>
-								<a href="notice-detail.html">user <i th:utext="followNotice.user.username">nowcoder</i> followed you ...</a>
+								<a th:href="@{/notice/detail/follow}">user <i th:utext="${followNotice.user.username}">nowcoder</i> followed you ...</a>
 								<ul class="d-inline font-size-12 float-right">
 									<li class="d-inline ml-2"><span class="text-primary" ><i th:text="${followNotice.count}">3</i> conversations in total</span></li>
 								</ul>

@@ -15,7 +15,6 @@
         <foreach item="id" collection="ids" separator="," close=")" open="(" index="">
             #{id}
         </foreach>
-        />
     </update>
 
 
