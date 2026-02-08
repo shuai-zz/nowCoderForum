@@ -2,10 +2,8 @@ package org.example.nowcoder.controller;
 
 import com.github.pagehelper.PageInfo;
 import lombok.RequiredArgsConstructor;
-import org.example.nowcoder.entity.Comment;
-import org.example.nowcoder.entity.DiscussPost;
-import org.example.nowcoder.entity.Page;
-import org.example.nowcoder.entity.User;
+import org.example.nowcoder.entity.*;
+import org.example.nowcoder.event.EventProducer;
 import org.example.nowcoder.service.CommentService;
 import org.example.nowcoder.service.DiscussPostService;
 import org.example.nowcoder.service.LikeService;
@@ -18,8 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
-import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_COMMENT;
-import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_POST;
+import static org.example.nowcoder.utils.ForumConstant.*;
 
 /**
  * @author zhaoshuai
@@ -33,6 +30,7 @@ public class DiscussPostController {
     private final UserService userService;
     private final CommentService commentService;
     private final LikeService likeService;
+    private final EventProducer eventProducer;
 
     @PostMapping("/add")
     @ResponseBody
@@ -47,6 +45,13 @@ public class DiscussPostController {
         discussPost.setContent(content);
         discussPost.setCreateTime(new Date());
         discussPostService.insertDiscussPost(discussPost);
+        // 触发发帖事件
+        Event event=new Event()
+                .setTopic(TOPIC_PUBLISH)
+                .setUserId(user.getId())
+                .setEntityType(ENTITY_TYPE_POST)
+                .setEntityId(discussPost.getId());
+        eventProducer.fireEvent(event);
 
         // 报错的情况将来统一处理
         return ForumUtil.getJsonString(0, "Post successfully!");

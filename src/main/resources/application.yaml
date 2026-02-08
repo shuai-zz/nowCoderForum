@@ -1,5 +1,9 @@
 # spring config
 spring:
+  # ElasticSearch
+  elasticsearch:
+    uris: http://localhost:9200
+  # kafka
   kafka:
     bootstrap-servers: localhost:29092  # Docker部署时需注意网络映射
     consumer:
@@ -47,8 +51,8 @@ spring:
           auth: true
           starttls.enable: true
           ssl.enabled: true
-  # Redis
   data:
+    # Redis
     redis:
       host: localhost
       port: 6379

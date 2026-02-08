@@ -4,8 +4,11 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.example.nowcoder.entity.DiscussPost;
 import org.example.nowcoder.entity.Event;
 import org.example.nowcoder.entity.Message;
+import org.example.nowcoder.service.DiscussPostService;
+import org.example.nowcoder.service.ElasticSearchService;
 import org.example.nowcoder.service.MessageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -24,6 +27,8 @@ import static org.example.nowcoder.utils.ForumConstant.*;
 @RequiredArgsConstructor
 public class EventConsumer {
     private final MessageService messageService;
+    private final DiscussPostService discussPostService;
+    private final ElasticSearchService elasticSearchService;
 
     @KafkaListener(topics = {TOPIC_COMMENT, TOPIC_LIKE, TOPIC_FOLLOW})
     public void handleCommentMessage(ConsumerRecord record) {
@@ -54,6 +59,25 @@ public class EventConsumer {
         }
         message.setContent(JSONObject.toJSONString(content));
         messageService.addMessage(message);
+    }
+
+
+    @KafkaListener(topics = {TOPIC_PUBLISH})
+    public void handlePublishMessage(ConsumerRecord record) {
+        if(record==null||record.value()==null){
+            log.error("Message Content is null!");
+            return;
+        }
+        Event event = JSONObject.parseObject(record.value().toString(), Event.class);
+        if(event==null){
+            log.error("Event Format is wrong!");
+            return;
+        }
+
+        DiscussPost post = discussPostService.findDiscussPostById(event.getEntityId());
+        elasticSearchService.saveDiscussPost(post);
+
+
     }
 
 }
