@@ -1,6 +1,7 @@
 package org.example.nowcoder.service.impl;
 
 import com.github.pagehelper.PageHelper;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.example.nowcoder.entity.DiscussPost;
@@ -14,6 +15,10 @@ import org.example.nowcoder.utils.MailClient;
 import org.example.nowcoder.utils.RedisKeyUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
@@ -29,7 +34,7 @@ import static org.example.nowcoder.utils.ForumConstant.*;
  */
 @Service
 @RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl implements UserService, UserDetailsService {
     private final UserMapper userMapper;
     private final MailClient mailClient;
     private final TemplateEngine templateEngine;
@@ -45,14 +50,13 @@ public class UserServiceImpl implements UserService {
     @Override
     public User findUserById(int id) {
 //        return userMapper.selectById(id);
-        User user=getCache(id);
-        if (user==null){
-            user=initCache(id);
+        User user = getCache(id);
+        if (user == null) {
+            user = initCache(id);
         }
         return user;
 
     }
-
 
 
     @Override
@@ -188,8 +192,6 @@ public class UserServiceImpl implements UserService {
     }
 
 
-
-
     @Override
     public LoginTicket getLoginTicket(String ticket) {
 //        return loginTicketMapper.selectByTicket(ticket);
@@ -210,22 +212,22 @@ public class UserServiceImpl implements UserService {
         HashMap<String, Object> map = new HashMap<>();
         User user = userMapper.selectById(id);
         oldPassword = ForumUtil.md5(oldPassword + user.getSalt());
-        if(!user.getPassword().equals(oldPassword)){
-            map.put("oldPasswordMsg","Incorrect Password");
+        if (!user.getPassword().equals(oldPassword)) {
+            map.put("oldPasswordMsg", "Incorrect Password");
             return map;
         }
-        if(newPassword.length()<8){
-            map.put("newPasswordMsg","Password length must be greater than 8");
+        if (newPassword.length() < 8) {
+            map.put("newPasswordMsg", "Password length must be greater than 8");
             return map;
         }
-        if(newPassword.equals(oldPassword)){
-            map.put("newPasswordMsg","New password cannot be the same as the old password");
+        if (newPassword.equals(oldPassword)) {
+            map.put("newPasswordMsg", "New password cannot be the same as the old password");
             return map;
         }
-        try{
+        try {
             int i = userMapper.updatePassword(id, ForumUtil.md5(newPassword + user.getSalt()));
-        }catch (Exception e){
-            map.put("newPasswordMsg","Failed to update password");
+        } catch (Exception e) {
+            map.put("newPasswordMsg", "Failed to update password");
             return map;
         }
         return map;
@@ -241,6 +243,7 @@ public class UserServiceImpl implements UserService {
         String redisKey = RedisKeyUtil.getUserKey(userId);
         return (User) redisTemplate.opsForValue().get(redisKey);
     }
+
     // 2. 如果缓存中没有，再从数据库取，并放入缓存
     private User initCache(int userId) {
         User user = userMapper.selectById(userId);
@@ -248,9 +251,31 @@ public class UserServiceImpl implements UserService {
         redisTemplate.opsForValue().set(redisKey, user, 3600, TimeUnit.SECONDS);
         return user;
     }
+
     // 3. 数据变更时，清除缓存
     private void clearCache(int userId) {
         String redisKey = RedisKeyUtil.getUserKey(userId);
         redisTemplate.delete(redisKey);
+    }
+
+
+    @Override
+    @NonNull
+    public UserDetails loadUserByUsername(@NonNull String username) throws UsernameNotFoundException {
+        return this.findUserByName(username);
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthirities(int id) {
+        User user = this.findUserById(id);
+
+        List<GrantedAuthority> list = new ArrayList<>();
+        list.add((GrantedAuthority) () ->
+                switch (user.getType()) {
+                    case 1 -> AUTHORITY_ADMIN;
+                    case 2 -> AUTHORITY_MODERATOR;
+                    default -> AUTHORITY_USER;
+                });
+        return list;
     }
 }

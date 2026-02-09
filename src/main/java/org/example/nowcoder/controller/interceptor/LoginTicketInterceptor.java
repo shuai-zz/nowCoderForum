@@ -11,6 +11,10 @@ import org.example.nowcoder.service.UserService;
 import org.example.nowcoder.utils.CookieUtil;
 import org.example.nowcoder.utils.HostHolder;
 import org.jspecify.annotations.Nullable;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
@@ -32,15 +36,20 @@ public class LoginTicketInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         // 获取loginTicket
         String ticket = CookieUtil.getValue(request, "ticket");
-        if(ticket!=null){
+        if (ticket != null) {
             // 获取LoginTicket
-            LoginTicket loginTicket=userService.getLoginTicket(ticket);
+            LoginTicket loginTicket = userService.getLoginTicket(ticket);
             // 验证是否过期
-            if(loginTicket!=null&&loginTicket.getStatus()==0&&loginTicket.getExpired().after(new Date())){
+            if (loginTicket != null && loginTicket.getStatus() == 0 && loginTicket.getExpired().after(new Date())) {
                 // 查询当前用户
                 User user = userService.findUserById(loginTicket.getUserId());
                 // 存储到ThreadLocal
                 hostHolder.setUser(user);
+                // 构建用户认证结果，并存入SecurityContext，以便于Security进行权限管理
+                Authentication authentication = new UsernamePasswordAuthenticationToken(
+                        user, user.getPassword(), userService.getAuthirities(user.getId())
+                );
+                SecurityContextHolder.setContext(new SecurityContextImpl(authentication));
             }
         }
         return true;
@@ -49,18 +58,19 @@ public class LoginTicketInterceptor implements HandlerInterceptor {
 
     @Override
     public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, @Nullable ModelAndView modelAndView) throws Exception {
-        User user=hostHolder.getUser();
-        if(user!=null&&modelAndView!=null){
+        User user = hostHolder.getUser();
+        if (user != null && modelAndView != null) {
             int unreadLetterCount = messageService.findUnreadCount(user.getId(), null);
             int unreadNoticeCount = messageService.findNoticeUnreadCount(user.getId(), null);
 
-            modelAndView.addObject("loginUser",user);
-            modelAndView.addObject("messageUnread",unreadLetterCount+unreadNoticeCount);
+            modelAndView.addObject("loginUser", user);
+            modelAndView.addObject("messageUnread", unreadLetterCount + unreadNoticeCount);
         }
     }
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, @Nullable Exception ex) throws Exception {
         hostHolder.clear();
+        SecurityContextHolder.clearContext();
     }
 }
