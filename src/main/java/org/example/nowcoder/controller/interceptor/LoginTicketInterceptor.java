@@ -13,12 +13,14 @@ import org.example.nowcoder.utils.HostHolder;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
+import java.util.Collection;
 import java.util.Date;
 
 /**
@@ -46,10 +48,10 @@ public class LoginTicketInterceptor implements HandlerInterceptor {
                 // 存储到ThreadLocal
                 hostHolder.setUser(user);
                 // 构建用户认证结果，并存入SecurityContext，以便于Security进行权限管理
-                Authentication authentication = new UsernamePasswordAuthenticationToken(
-                        user, user.getPassword(), userService.getAuthirities(user.getId())
-                );
-                SecurityContextHolder.setContext(new SecurityContextImpl(authentication));
+//                Authentication authentication = new UsernamePasswordAuthenticationToken(
+//                        user, user.getPassword(), userService.getAuthorities(user.getId())
+//                );
+//                SecurityContextHolder.setContext(new SecurityContextImpl(authentication));
             }
         }
         return true;
@@ -71,6 +73,6 @@ public class LoginTicketInterceptor implements HandlerInterceptor {
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, @Nullable Exception ex) throws Exception {
         hostHolder.clear();
-        SecurityContextHolder.clearContext();
+//        SecurityContextHolder.clearContext();
     }
 }

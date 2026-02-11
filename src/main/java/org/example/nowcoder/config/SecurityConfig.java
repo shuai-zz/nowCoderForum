@@ -1,41 +1,32 @@
 package org.example.nowcoder.config;
 
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.example.nowcoder.entity.LoginTicket;
 import org.example.nowcoder.entity.User;
 import org.example.nowcoder.service.UserService;
+import org.example.nowcoder.utils.CookieUtil;
 import org.example.nowcoder.utils.ForumUtil;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.AccessDeniedHandler;
-import org.springframework.security.web.authentication.AuthenticationFailureHandler;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.authentication.rememberme.InMemoryTokenRepositoryImpl;
-import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
-
+import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Collections;
+import java.io.IOException;
+import java.util.Date;
 import java.util.Objects;
 
 import static org.example.nowcoder.utils.ForumConstant.*;
@@ -47,16 +38,41 @@ import static org.example.nowcoder.utils.ForumConstant.*;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-
     private final UserService userService;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.ignoring().requestMatchers("/resources/**");
+    }
 
-        http
-                .authorizeHttpRequests(authz -> authz
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        // 在权限判断前，把 ticket 对应的用户认证信息放进 SecurityContext
+        http.addFilterBefore(new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                    throws ServletException, IOException {
+                if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                    String ticket = CookieUtil.getValue(request, "ticket");
+                    if (ticket != null) {
+                        LoginTicket loginTicket = userService.getLoginTicket(ticket);
+                        if (loginTicket != null && loginTicket.getStatus() == 0 && loginTicket.getExpired().after(new Date())) {
+                            User user = userService.findUserById(loginTicket.getUserId());
+                            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                                    user, user.getPassword(), userService.getAuthorities(user.getId())
+                            );
+                            SecurityContextHolder.setContext(new SecurityContextImpl(authentication));
+                        }
+                    }
+                }
+                filterChain.doFilter(request, response);
+            }
+        }, UsernamePasswordAuthenticationFilter.class);
+
+        // 添加自定义认证过滤器
+        http.authorizeHttpRequests(authz -> authz
                         // 忽略静态资源
-                        .requestMatchers("/resources/**").permitAll()
+//                        .requestMatchers("/resources/**", "/**/*.css", "/**/*.js", "/**/*.png", "/**/*.jpg", "/**/*.jpeg").permitAll()
                         // 授权
                         .requestMatchers("/user/setting",
                                 "/user/upload",
@@ -68,9 +84,16 @@ public class SecurityConfig {
                                 "/follow",
                                 "/unfollow")
                         .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
+                        .requestMatchers(
+                                "/discuss/top",
+                                "/discuss/wonderful"
+                        )
+                        .hasAnyAuthority(AUTHORITY_MODERATOR)
+                        .requestMatchers("/discuss/delete")
+                        .hasAnyAuthority(AUTHORITY_ADMIN)
                         .anyRequest().permitAll()
-                )
-                .exceptionHandling(exceptionHandling -> exceptionHandling
+        );
+        http.exceptionHandling(exceptionHandling -> exceptionHandling
                         // 权限不足处理
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             String xRequestedWith = request.getHeader("x-requested-with");
@@ -105,6 +128,4 @@ public class SecurityConfig {
 
         return http.build();
     }
-
-
 }

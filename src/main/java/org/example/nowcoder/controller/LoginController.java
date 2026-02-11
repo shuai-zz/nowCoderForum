@@ -43,6 +43,7 @@ public class LoginController {
     private final Producer kaptchaProducer;
     private final RedisTemplate<String, String> redisTemplate;
 
+
     @Value("${server.servlet.context-path}")
     private String contextPath;
 

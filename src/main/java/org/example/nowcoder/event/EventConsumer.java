@@ -76,8 +76,20 @@ public class EventConsumer {
 
         DiscussPost post = discussPostService.findDiscussPostById(event.getEntityId());
         elasticSearchService.saveDiscussPost(post);
+    }
 
-
+    @KafkaListener(topics = {TOPIC_DELETE})
+    public void handleDeleteMessage(ConsumerRecord record) {
+        if(record==null||record.value()==null){
+            log.error("Message Content is null!");
+            return;
+        }
+        Event event = JSONObject.parseObject(record.value().toString(), Event.class);
+        if(event==null){
+            log.error("Event Format is wrong!");
+            return;
+        }
+        elasticSearchService.deleteDiscussPost(event.getEntityId());
     }
 
 }

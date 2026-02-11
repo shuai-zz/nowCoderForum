@@ -46,7 +46,7 @@ public class DiscussPostController {
         discussPost.setCreateTime(new Date());
         discussPostService.insertDiscussPost(discussPost);
         // 触发发帖事件
-        Event event=new Event()
+        Event event = new Event()
                 .setTopic(TOPIC_PUBLISH)
                 .setUserId(user.getId())
                 .setEntityType(ENTITY_TYPE_POST)
@@ -96,9 +96,9 @@ public class DiscussPostController {
                 // 评论作者
                 commmentMap.put("user", userService.findUserById(comment.getUserId()));
                 // 评论点赞数量
-                commmentMap.put("likeCount",likeService.findEntityLikeCount(ENTITY_TYPE_COMMENT, comment.getId()));
+                commmentMap.put("likeCount", likeService.findEntityLikeCount(ENTITY_TYPE_COMMENT, comment.getId()));
                 // 评论点赞状态
-                commmentMap.put("likeStatus", hostHolder.getUser()==null?0:likeService.findEntityLikeStatus(hostHolder.getUser().getId(), ENTITY_TYPE_COMMENT, comment.getId()));
+                commmentMap.put("likeStatus", hostHolder.getUser() == null ? 0 : likeService.findEntityLikeStatus(hostHolder.getUser().getId(), ENTITY_TYPE_COMMENT, comment.getId()));
 
 
                 // 对于评论的回复
@@ -115,9 +115,9 @@ public class DiscussPostController {
                         User target = reply.getTargetId() == 0 ? null : userService.findUserById(reply.getTargetId());
                         replyMap.put("target", target);
                         // 回复点赞数量
-                        replyMap.put("likeCount",likeService.findEntityLikeCount(ENTITY_TYPE_COMMENT, reply.getId()));
+                        replyMap.put("likeCount", likeService.findEntityLikeCount(ENTITY_TYPE_COMMENT, reply.getId()));
                         // 评论点赞状态
-                        replyMap.put("likeStatus", hostHolder.getUser()==null?0:likeService.findEntityLikeStatus(hostHolder.getUser().getId(), ENTITY_TYPE_COMMENT, reply.getId()));
+                        replyMap.put("likeStatus", hostHolder.getUser() == null ? 0 : likeService.findEntityLikeStatus(hostHolder.getUser().getId(), ENTITY_TYPE_COMMENT, reply.getId()));
                         replies.add(replyMap);
                     }
                 }
@@ -129,5 +129,51 @@ public class DiscussPostController {
         }
         model.addAttribute("comments", comments);
         return "/site/discuss-detail";
+    }
+
+    // 置顶
+    @PostMapping("/top")
+    @ResponseBody
+    public String setTop(int id) {
+        discussPostService.updateType(id, 1);
+
+        // 触发发帖事件
+        Event event = new Event()
+                .setTopic(TOPIC_PUBLISH)
+                .setUserId(hostHolder.getUser().getId())
+                .setEntityType(ENTITY_TYPE_POST)
+                .setEntityId(id);
+        eventProducer.fireEvent(event);
+        return ForumUtil.getJsonString(0);
+    }
+
+    // 加精
+    @PostMapping("/wonderful")
+    @ResponseBody
+    public String setWonderful(int id) {
+        discussPostService.updateStatus(id, 1);
+        // 触发发帖事件
+        Event event = new Event()
+                .setTopic(TOPIC_PUBLISH)
+                .setUserId(hostHolder.getUser().getId())
+                .setEntityType(ENTITY_TYPE_POST)
+                .setEntityId(id);
+        eventProducer.fireEvent(event);
+        return ForumUtil.getJsonString(0);
+    }
+
+    // 删除
+    @PostMapping("/delete")
+    @ResponseBody
+    public String setDelete(int id) {
+        discussPostService.updateStatus(id, 2);
+        // 触发删帖事件
+        Event event = new Event()
+                .setTopic(TOPIC_DELETE)
+                .setUserId(hostHolder.getUser().getId())
+                .setEntityType(ENTITY_TYPE_POST)
+                .setEntityId(id);
+        eventProducer.fireEvent(event);
+        return ForumUtil.getJsonString(0);
     }
 }

@@ -28,5 +28,5 @@ public interface UserService {
 
     User findUserByName(String toName);
 
-    Collection<? extends GrantedAuthority> getAuthirities(int id);
+    Collection<? extends GrantedAuthority> getAuthorities(int id);
 }

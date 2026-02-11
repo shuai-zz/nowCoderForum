@@ -266,7 +266,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public Collection<? extends GrantedAuthority> getAuthirities(int id) {
+    public Collection<? extends GrantedAuthority> getAuthorities(int id) {
         User user = this.findUserById(id);
 
         List<GrantedAuthority> list = new ArrayList<>();
