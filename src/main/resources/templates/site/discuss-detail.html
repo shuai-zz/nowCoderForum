@@ -25,11 +25,11 @@
                 <div class="float-right">
                     <input type="hidden" id="postId" th:value="${post.id}">
                     <button type="button" class="btn btn-danger btn-sm" id="topBtn"
-                        th:disabled="${post.type==1}" sec:authorize="hasAnyAuthority('MODERATOR')">Pin</button>
+                        th:disabled="${post.type==1}" sec:authorize="hasAnyAuthority('moderator')">Pin</button>
                     <button type="button" class="btn btn-danger btn-sm" id="wonderfulBtn"
-                        th:disabled="${post.status==1}" sec:authorize="hasAnyAuthority('MODERATOR')">Feature</button>
+                        th:disabled="${post.status==1}" sec:authorize="hasAnyAuthority('moderator')">Feature</button>
                     <button type="button" class="btn btn-danger btn-sm" id="deleteBtn"
-                        th:disabled="${post.status==2}" sec:authorize="hasAnyAuthority('ADMIN')">Delete</button>
+                        th:disabled="${post.status==2}" sec:authorize="hasAnyAuthority('admin')">Delete</button>
                 </div>
             </h6>
 

@@ -82,14 +82,18 @@ public class SecurityConfig {
                                 "/notice/**",
                                 "/like",
                                 "/follow",
-                                "/unfollow")
+                                "/unfollow"
+                        )
                         .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
                         .requestMatchers(
                                 "/discuss/top",
                                 "/discuss/wonderful"
-                        )
+                                )
                         .hasAnyAuthority(AUTHORITY_MODERATOR)
-                        .requestMatchers("/discuss/delete")
+                        .requestMatchers(
+                                "/discuss/delete",
+                                "/data/**"
+                        )
                         .hasAnyAuthority(AUTHORITY_ADMIN)
                         .anyRequest().permitAll()
         );
