@@ -86,6 +86,9 @@ public class SecurityConfig {
                         .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/users/me/password")
                         .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
+                        // Messages / Notices（P3.1）
+                        .requestMatchers("/api/v1/messages/**", "/api/v1/notices/**")
+                        .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
                         // Posts REST（P2.1）
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/posts",
