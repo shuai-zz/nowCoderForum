@@ -7,6 +7,7 @@ import org.example.nowcoder.security.RestAuthenticationEntryPoint;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -79,6 +80,18 @@ public class SecurityConfig {
                         // /api/v1/auth/{me,logout} 要求已登录
                         .requestMatchers("/api/v1/auth/**").authenticated()
                         .requestMatchers("/api/v1/users/avatar/**").permitAll()
+                        // Posts REST（P2.1）
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/posts",
+                                "/api/v1/posts/*",
+                                "/api/v1/posts/*/comments").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/posts")
+                        .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
+                        .requestMatchers(HttpMethod.PATCH,
+                                "/api/v1/posts/*/top",
+                                "/api/v1/posts/*/wonderful").hasAuthority(AUTHORITY_MODERATOR)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*")
+                        .hasAuthority(AUTHORITY_ADMIN)
                         // 老 Thymeleaf 兼容（过渡期保留，P5 删）
                         .requestMatchers(
                                 "/login", "/register", "/activation/**",
