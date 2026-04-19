@@ -92,6 +92,17 @@ public class SecurityConfig {
                                 "/api/v1/posts/*/wonderful").hasAuthority(AUTHORITY_MODERATOR)
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*")
                         .hasAuthority(AUTHORITY_ADMIN)
+                        // Comments / Likes / Follows（P2.2）
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/users/*/followees",
+                                "/api/v1/users/*/followers").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/comments",
+                                "/api/v1/likes",
+                                "/api/v1/follows")
+                        .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/follows/**")
+                        .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
                         // 老 Thymeleaf 兼容（过渡期保留，P5 删）
                         .requestMatchers(
                                 "/login", "/register", "/activation/**",
