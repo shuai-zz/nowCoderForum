@@ -145,3 +145,11 @@ nowCoder:
     domain: http://localhost:8080
     frontend: http://localhost:5173
     upload: ${UPLOAD_PATH}
+  captcha:
+    # kaptcha（默认，本地图形验证码）/ tencent（腾讯云行为验证码）
+    provider: ${CAPTCHA_PROVIDER:kaptcha}
+    tencent:
+      secret-id: ${TENCENT_SECRET_ID:}
+      secret-key: ${TENCENT_SECRET_KEY:}
+      captcha-app-id: ${TENCENT_CAPTCHA_APP_ID:0}
+      app-secret-key: ${TENCENT_CAPTCHA_APP_SECRET_KEY:}

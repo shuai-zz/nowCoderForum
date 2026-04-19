@@ -3,11 +3,13 @@ package org.example.nowcoder.web;
 import com.google.code.kaptcha.Producer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+import org.example.nowcoder.captcha.CaptchaContext;
+import org.example.nowcoder.captcha.CaptchaVerifier;
 import org.example.nowcoder.entity.User;
 import org.example.nowcoder.exception.AuthException;
 import org.example.nowcoder.exception.ValidationException;
@@ -49,6 +51,7 @@ public class AuthController {
     private final Producer kaptchaProducer;
     private final RedisTemplate<String, String> redisTemplate;
     private final HostHolder hostHolder;
+    private final CaptchaVerifier captchaVerifier;
 
     @Operation(summary = "注册：成功后向注册邮箱发送激活邮件")
     @PostMapping("/register")
@@ -79,7 +82,7 @@ public class AuthController {
         };
     }
 
-    @Operation(summary = "获取图形验证码：响应体为 PNG，响应头 X-Captcha-Owner 返回 owner（登录时回填）")
+    @Operation(summary = "图形验证码（仅 Kaptcha 模式使用）：响应头 X-Captcha-Owner 返回 owner")
     @GetMapping(value = "/captcha", produces = MediaType.IMAGE_PNG_VALUE)
     public void captcha(HttpServletResponse response) throws IOException {
         String text = kaptchaProducer.createText();
@@ -96,10 +99,14 @@ public class AuthController {
         }
     }
 
-    @Operation(summary = "登录：验证码校验 + 账号密码校验，成功返回 ticket")
+    @Operation(summary = "登录：验证码 + 账号密码校验，成功返回 ticket")
     @PostMapping("/login")
-    public Result<LoginVO> login(@Valid @RequestBody LoginRequest req) {
-        verifyCaptcha(req.captchaOwner(), req.captcha());
+    public Result<LoginVO> login(@Valid @RequestBody LoginRequest req, HttpServletRequest httpReq) {
+        captchaVerifier.verify(new CaptchaContext(
+                req.captcha(), req.captchaOwner(),
+                req.captchaTicket(), req.captchaRandstr(),
+                clientIp(httpReq)
+        ));
 
         int expiredSeconds = req.rememberMe() ? REMEMBER_EXPIRED_SECONDS : DEFAULT_EXPIRED_SECONDS;
         Map<String, Object> result = userService.login(req.username(), req.password(), expiredSeconds);
@@ -134,14 +141,13 @@ public class AuthController {
         return Result.ok(UserVO.from(user));
     }
 
-    private void verifyCaptcha(String owner, String input) {
-        if (StringUtils.isBlank(owner) || StringUtils.isBlank(input)) {
-            throw new ValidationException("Captcha is required");
+    private String clientIp(HttpServletRequest req) {
+        String forwarded = req.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
         }
-        String expected = redisTemplate.opsForValue().get(RedisKeyUtil.getKaptchaKey(owner));
-        if (StringUtils.isBlank(expected) || !expected.equalsIgnoreCase(input)) {
-            throw new ValidationException("Captcha is incorrect or expired");
-        }
+        String real = req.getHeader("X-Real-IP");
+        return real != null && !real.isBlank() ? real : req.getRemoteAddr();
     }
 
     private String joinErrors(Map<String, Object> errors) {

@@ -1,13 +1,16 @@
 package org.example.nowcoder;
 
 import jakarta.annotation.PostConstruct;
+import org.example.nowcoder.captcha.CaptchaProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 /**
  * @author 23211
  */
 @SpringBootApplication
+@EnableConfigurationProperties(CaptchaProperties.class)
 public class NowCoderApplication {
     @PostConstruct
     public void init() {
