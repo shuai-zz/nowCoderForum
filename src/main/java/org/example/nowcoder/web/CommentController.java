@@ -27,7 +27,7 @@ import java.util.Date;
 import static org.example.nowcoder.utils.ForumConstant.*;
 
 @Tag(name = "Comment", description = "评论 / 回复")
-@RestController
+@RestController("apiCommentController")
 @RequestMapping("/api/v1/comments")
 @RequiredArgsConstructor
 public class CommentController {

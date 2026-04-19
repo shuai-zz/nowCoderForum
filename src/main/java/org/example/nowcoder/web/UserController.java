@@ -36,7 +36,7 @@ import java.util.Set;
 import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_USER;
 
 @Tag(name = "User", description = "用户主页 / 头像 / 改密")
-@RestController
+@RestController("apiUserController")
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 @Slf4j
