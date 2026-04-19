@@ -89,6 +89,10 @@ public class SecurityConfig {
                         // Messages / Notices（P3.1）
                         .requestMatchers("/api/v1/messages/**", "/api/v1/notices/**")
                         .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
+                        // Search（P3.2）：公开
+                        .requestMatchers(HttpMethod.GET, "/api/v1/search").permitAll()
+                        // Admin stats（P3.2）：仅管理员
+                        .requestMatchers("/api/v1/admin/**").hasAuthority(AUTHORITY_ADMIN)
                         // Posts REST（P2.1）
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/posts",
