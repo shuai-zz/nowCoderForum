@@ -1,7 +1,8 @@
 package org.example.nowcoder.controller;
 
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.TypeReference;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.PageInfo;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class MessageController {
     private final MessageService messageService;
     private final HostHolder hostHolder;
     private final UserService userService;
+    private final ObjectMapper objectMapper;
 
 
     @GetMapping("/letter/list")
@@ -202,7 +204,7 @@ public class MessageController {
                 map.put("notice", notice);
                 //  内容
                 String content = HtmlUtils.htmlUnescape(notice.getContent());
-                Map<String, Object> data = JSONObject.parseObject(content, HashMap.class);
+                Map<String, Object> data = parseJson(content);
                 map.put("user", userService.findUserById((Integer) data.get("userId")));
                 map.put("entityType", data.get("entityType"));
                 map.put("entityId", data.get("entityId"));
@@ -232,8 +234,7 @@ public class MessageController {
         }
         notice.put("message", message);
         String content = HtmlUtils.htmlUnescape(message.getContent());
-        Map<String, Object> data = JSONObject.parseObject(content, new TypeReference<>() {
-        });
+        Map<String, Object> data = parseJson(content);
         notice.put("user", userService.findUserById((Integer) data.get("userId")));
         notice.put("entityType", data.get("entityType"));
         notice.put("entityId", data.get("entityId"));
@@ -245,5 +246,13 @@ public class MessageController {
 
         return notice;
 
+    }
+
+    private Map<String, Object> parseJson(String json) {
+        try {
+            return objectMapper.readValue(json, new TypeReference<>() {});
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to parse notification content: " + json, e);
+        }
     }
 }

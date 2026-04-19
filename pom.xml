@@ -20,7 +20,6 @@
 		<pagehelper.version>2.1.0</pagehelper.version>
 		<springdoc.version>2.6.0</springdoc.version>
 		<kaptcha.version>2.3.2</kaptcha.version>
-		<fastjson.version>1.2.83</fastjson.version>
 	</properties>
 
 	<dependencies>
@@ -117,12 +116,7 @@
 			<artifactId>kaptcha</artifactId>
 			<version>${kaptcha.version}</version>
 		</dependency>
-		<!-- fastjson 仅剩 MessageController 用，P2 迁到 Jackson 后移除 -->
-		<dependency>
-			<groupId>com.alibaba</groupId>
-			<artifactId>fastjson</artifactId>
-			<version>${fastjson.version}</version>
-		</dependency>
+		<!-- fastjson 已全部替换为 Jackson（P2.3 清理）-->
 		<dependency>
 			<groupId>org.aspectj</groupId>
 			<artifactId>aspectjweaver</artifactId>

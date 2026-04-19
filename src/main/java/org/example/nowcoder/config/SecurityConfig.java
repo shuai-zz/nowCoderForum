@@ -80,6 +80,12 @@ public class SecurityConfig {
                         // /api/v1/auth/{me,logout} 要求已登录
                         .requestMatchers("/api/v1/auth/**").authenticated()
                         .requestMatchers("/api/v1/users/avatar/**").permitAll()
+                        // Users REST（P2.3）
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users/me/avatar")
+                        .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/users/me/password")
+                        .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
                         // Posts REST（P2.1）
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/posts",
