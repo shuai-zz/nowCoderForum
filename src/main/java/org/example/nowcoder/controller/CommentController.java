@@ -9,6 +9,8 @@ import org.example.nowcoder.event.EventProducer;
 import org.example.nowcoder.service.CommentService;
 import org.example.nowcoder.service.DiscussPostService;
 import org.example.nowcoder.utils.HostHolder;
+import org.example.nowcoder.utils.RedisKeyUtil;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,11 +27,13 @@ import static org.example.nowcoder.utils.ForumConstant.*;
 @Controller
 @RequestMapping("/comment")
 @RequiredArgsConstructor
+@SuppressWarnings("unchecked")
 public class CommentController {
     private final CommentService commentService;
     private final HostHolder hostHolder;
     private final EventProducer eventProducer;
     private final DiscussPostService discussPostService;
+    private final RedisTemplate redisTemplate;
 
     @PostMapping("/add/{discussPostId}")
     public String addComment(@PathVariable("discussPostId") int discussPostId, Comment comment) {
@@ -63,6 +67,9 @@ public class CommentController {
                     .setEntityType(ENTITY_TYPE_POST)
                     .setEntityId(discussPostId);
             eventProducer.fireEvent(event);
+            // 计算帖子分数
+            String redisKey = RedisKeyUtil.getPostScore();
+            redisTemplate.opsForSet().add(redisKey, discussPostId);
         }
         return "redirect:/discuss/detail/" + discussPostId;
     }

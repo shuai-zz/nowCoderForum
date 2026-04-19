@@ -18,4 +18,5 @@ public interface DiscussPostMapper {
     int updateType(int id, int type);
     int updateStatus(int id, int status);
 
+    void updateScore(int postId, double score);
 }

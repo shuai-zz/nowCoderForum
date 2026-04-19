@@ -10,6 +10,8 @@ import org.example.nowcoder.service.LikeService;
 import org.example.nowcoder.service.UserService;
 import org.example.nowcoder.utils.ForumUtil;
 import org.example.nowcoder.utils.HostHolder;
+import org.example.nowcoder.utils.RedisKeyUtil;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +26,7 @@ import static org.example.nowcoder.utils.ForumConstant.*;
 @Controller
 @RequestMapping("/discuss")
 @RequiredArgsConstructor
+@SuppressWarnings("unchecked")
 public class DiscussPostController {
     private final DiscussPostService discussPostService;
     private final HostHolder hostHolder;
@@ -31,6 +34,7 @@ public class DiscussPostController {
     private final CommentService commentService;
     private final LikeService likeService;
     private final EventProducer eventProducer;
+    private final RedisTemplate redisTemplate;
 
     @PostMapping("/add")
     @ResponseBody
@@ -52,6 +56,10 @@ public class DiscussPostController {
                 .setEntityType(ENTITY_TYPE_POST)
                 .setEntityId(discussPost.getId());
         eventProducer.fireEvent(event);
+
+        // 计算帖子分数
+        String redisKey = RedisKeyUtil.getPostScore();
+        redisTemplate.opsForSet().add(redisKey, discussPost.getId());
 
         // 报错的情况将来统一处理
         return ForumUtil.getJsonString(0, "Post successfully!");
@@ -159,6 +167,9 @@ public class DiscussPostController {
                 .setEntityType(ENTITY_TYPE_POST)
                 .setEntityId(id);
         eventProducer.fireEvent(event);
+        // 计算帖子分数
+        String redisKey = RedisKeyUtil.getPostScore();
+        redisTemplate.opsForSet().add(redisKey, id);
         return ForumUtil.getJsonString(0);
     }
 

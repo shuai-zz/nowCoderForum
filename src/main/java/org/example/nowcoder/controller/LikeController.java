@@ -8,12 +8,15 @@ import org.example.nowcoder.event.EventProducer;
 import org.example.nowcoder.service.LikeService;
 import org.example.nowcoder.utils.ForumUtil;
 import org.example.nowcoder.utils.HostHolder;
+import org.example.nowcoder.utils.RedisKeyUtil;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.HashMap;
 
+import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_POST;
 import static org.example.nowcoder.utils.ForumConstant.TOPIC_LIKE;
 
 /**
@@ -21,10 +24,12 @@ import static org.example.nowcoder.utils.ForumConstant.TOPIC_LIKE;
  */
 @Controller
 @RequiredArgsConstructor
+@SuppressWarnings("unchecked")
 public class LikeController {
     private final LikeService likeService;
     private final HostHolder hostHolder;
     private final EventProducer eventProducer;
+    private final RedisTemplate redisTemplate;
 
     @PostMapping("/like")
     @ResponseBody
@@ -52,6 +57,13 @@ public class LikeController {
                     .setEntityUserId(entityUserId)
                     .setData("postId", postId);
             eventProducer.fireEvent(event);
+
+        }
+
+        if (entityType == ENTITY_TYPE_POST) {
+            // 计算帖子分数
+            String redisKey = RedisKeyUtil.getPostScore();
+            redisTemplate.opsForSet().add(redisKey, postId);
         }
 
         return ForumUtil.getJsonString(0, null, map);

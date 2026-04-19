@@ -67,4 +67,10 @@ public class DiscussPostServiceImpl implements DiscussPostService {
     public int updateStatus(int entityId, int status) {
         return discussPostMapper.updateStatus(entityId,status);
     }
+
+
+    @Override
+    public void updateScore(int postId, double score) {
+        discussPostMapper.updateScore(postId,score);
+    }
 }
