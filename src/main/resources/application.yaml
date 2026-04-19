@@ -143,4 +143,5 @@ logging:
 nowCoder:
   path:
     domain: http://localhost:8080
+    frontend: http://localhost:5173
     upload: ${UPLOAD_PATH}

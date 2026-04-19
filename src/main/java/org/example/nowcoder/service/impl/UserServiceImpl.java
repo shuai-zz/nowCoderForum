@@ -46,6 +46,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Value("${server.servlet.context-path}")
     private String contextPath;
 
+    @Value("${nowCoder.path.frontend}")
+    private String frontendDomain;
+
     @Override
     public User findUserById(int id) {
 //        return userMapper.selectById(id);
@@ -111,7 +114,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         //send activation email
         Context context = new Context();
         context.setVariable("email", user.getEmail());
-        String url = domain + contextPath + "/activation/" + user.getId() + "/" + user.getActivationCode();
+        // 激活链接指向前端激活落地页，由前端调用 POST /api/v1/auth/activate
+        String url = frontendDomain + "/activate/" + user.getId() + "/" + user.getActivationCode();
         context.setVariable("url", url);
         String content = templateEngine.process("/mail/activation", context);
         mailClient.sendMail(user.getEmail(), "Activation", content);
