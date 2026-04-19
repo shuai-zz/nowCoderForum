@@ -22,7 +22,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
-import tools.jackson.databind.node.StringNode;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;

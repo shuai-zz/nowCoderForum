@@ -1,5 +1,15 @@
 # spring config
 spring:
+  application:
+    name: nowCoder Forum
+  config:
+    import: optional:file:.env[.properties]
+  # JDK21 虚拟线程：IO 密集型场景吞吐显著提升
+  threads:
+    virtual:
+      enabled: true
+  thymeleaf:
+    cache: false
   # QuartzProperties
   quartz:
     job-store-type: jdbc
@@ -16,8 +26,7 @@ spring:
           threadPool:
             class: org.quartz.simpl.SimpleThreadPool
             threadCount: 5
-
-  # TaskExecutionProperties
+  # TaskExecutionProperties（虚拟线程启用后，@Async 默认走虚拟线程池）
   task:
     execution:
       pool:
@@ -32,28 +41,22 @@ spring:
     uris: http://localhost:9200
   # kafka
   kafka:
-    bootstrap-servers: localhost:29092  # Docker部署时需注意网络映射
+    bootstrap-servers: localhost:29092
     consumer:
-      group-id: default-group          # 修正拼写错误：gourp-id -> group-id
+      group-id: default-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      auto-offset-reset: earliest       # 无偏移量时从最早开始消费
-      enable-auto-commit: true          # 自动提交偏移量
-      auto-commit-interval-ms: 500      # 自动提交间隔
+      auto-offset-reset: earliest
+      enable-auto-commit: true
+      auto-commit-interval-ms: 500
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-      acks: all                         # 所有副本确认后才返回成功
-      retries: 3                        # 重试次数
-      batch-size: 16384                 # 批处理大小
-      linger-ms: 1                      # 延迟1ms发送（攒批）
-      buffer-memory: 33554432           # 生产者缓冲区大小
-  application:
-    name: nowCoder Forum
-  config:
-    import: optional:file:.env[.properties]
-  thymeleaf:
-    cache: false
+      acks: all
+      retries: 3
+      batch-size: 16384
+      linger-ms: 1
+      buffer-memory: 33554432
   # DataSource: MySQL
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -65,7 +68,7 @@ spring:
       minimum-idle: 5
       maximum-pool-size: 15
       idle-timeout: 30000
-  # Mail Properties
+  # Mail
   mail:
     host: smtp.qq.com
     port: 465
@@ -79,26 +82,54 @@ spring:
           starttls.enable: true
           ssl.enabled: true
   data:
-    # Redis
     redis:
       host: localhost
       port: 6379
       database: 0
 
-
-# basic path
 server:
   port: 8080
   servlet:
     context-path: /forum
 
-# mybatis properties
-mybatis:
+# MyBatis Plus（替换原 mybatis 配置）
+mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.nowcoder.entity
+  type-aliases-package: org.example.nowcoder.entity
   configuration:
     use-generated-keys: true
     map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# SpringDoc OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+# PageHelper（过渡期保留，P2 结束后删除）
+pagehelper:
+  helper-dialect: mysql
+  reasonable: true
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
 
 # log
 logging:
@@ -107,13 +138,9 @@ logging:
       example:
         nowcoder:
           controller: debug
+          web: debug
 
 nowCoder:
   path:
     domain: http://localhost:8080
     upload: ${UPLOAD_PATH}
-
-# page helper
-pageHelper:
-  helper-dialect: mysql
-  reasonable: true
