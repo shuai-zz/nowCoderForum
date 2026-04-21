@@ -116,23 +116,6 @@ public class SecurityConfig {
                         .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/follows/**")
                         .hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
-                        // 老 Thymeleaf 兼容（过渡期保留，P5 删）
-                        .requestMatchers(
-                                "/login", "/register", "/activation/**",
-                                "/kaptcha", "/forget", "/denied", "/error"
-                        ).permitAll()
-                        .requestMatchers("/user/avatar/**").permitAll()
-                        // 需要登录的老路径（保留原有规则）
-                        .requestMatchers(
-                                "/user/setting", "/user/upload",
-                                "/comment/add/**", "/discuss/add",
-                                "/letter/**", "/notice/**",
-                                "/like", "/follow", "/unfollow"
-                        ).hasAnyAuthority(AUTHORITY_USER, AUTHORITY_ADMIN, AUTHORITY_MODERATOR)
-                        .requestMatchers("/discuss/top", "/discuss/wonderful")
-                        .hasAnyAuthority(AUTHORITY_MODERATOR)
-                        .requestMatchers("/discuss/delete", "/data/**")
-                        .hasAnyAuthority(AUTHORITY_ADMIN)
                         .anyRequest().permitAll()
                 )
                 .exceptionHandling(ex -> ex

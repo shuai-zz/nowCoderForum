@@ -8,24 +8,10 @@ spring:
   threads:
     virtual:
       enabled: true
-  thymeleaf:
-    cache: false
   # QuartzProperties
   quartz:
-    job-store-type: jdbc
+    job-store-type: memory
     scheduler-name: communityScheduler
-    properties:
-      org:
-        quartz:
-          scheduler:
-            instanceId: AUTO
-          jobStore:
-            class: org.quartz.impl.jdbcjobstore.JobStoreTX
-            driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
-            isClustered: true
-          threadPool:
-            class: org.quartz.simpl.SimpleThreadPool
-            threadCount: 5
   # TaskExecutionProperties（虚拟线程启用后，@Async 默认走虚拟线程池）
   task:
     execution:
@@ -41,7 +27,7 @@ spring:
     uris: http://localhost:9200
   # kafka
   kafka:
-    bootstrap-servers: localhost:29092
+    bootstrap-servers: localhost:9092
     consumer:
       group-id: default-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -89,8 +75,6 @@ spring:
 
 server:
   port: 8080
-  servlet:
-    context-path: /forum
 
 # MyBatis Plus（替换原 mybatis 配置）
 mybatis-plus:
@@ -137,19 +121,21 @@ logging:
     org:
       example:
         nowcoder:
-          controller: debug
           web: debug
 
-nowCoder:
+nowcoder:
   path:
     domain: http://localhost:8080
     frontend: http://localhost:5173
     upload: ${UPLOAD_PATH}
-  captcha:
-    # kaptcha（默认，本地图形验证码）/ tencent（腾讯云行为验证码）
-    provider: ${CAPTCHA_PROVIDER:kaptcha}
-    tencent:
-      secret-id: ${TENCENT_SECRET_ID:}
-      secret-key: ${TENCENT_SECRET_KEY:}
-      captcha-app-id: ${TENCENT_CAPTCHA_APP_ID:0}
-      app-secret-key: ${TENCENT_CAPTCHA_APP_SECRET_KEY:}
+  cors:
+    allowed-origins: http://localhost:5173
+
+nowcoder-captcha:
+  # kaptcha（默认，本地图形验证码）/ tencent（腾讯云行为验证码）
+  provider: ${CAPTCHA_PROVIDER:kaptcha}
+  tencent:
+    secret-id: ${TENCENT_SECRET_ID:}
+    secret-key: ${TENCENT_SECRET_KEY:}
+    captcha-app-id: ${TENCENT_CAPTCHA_APP_ID:0}
+    app-secret-key: ${TENCENT_CAPTCHA_APP_SECRET_KEY:}

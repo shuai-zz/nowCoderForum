@@ -16,7 +16,7 @@ import java.time.ZoneId;
 import java.util.Date;
 
 @Tag(name = "Admin Stats", description = "管理端：UV / DAU 统计")
-@RestController("apiDataController")
+@RestController
 @RequestMapping("/api/v1/admin/stats")
 @RequiredArgsConstructor
 public class DataController {

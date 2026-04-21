@@ -36,7 +36,7 @@ import java.util.Set;
 import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_USER;
 
 @Tag(name = "User", description = "用户主页 / 头像 / 改密")
-@RestController("apiUserController")
+@RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 @Slf4j
@@ -49,14 +49,11 @@ public class UserController {
     private final FollowService followService;
     private final HostHolder hostHolder;
 
-    @Value("${nowCoder.path.upload}")
+    @Value("${nowcoder.path.upload}")
     private String uploadPath;
 
-    @Value("${nowCoder.path.domain}")
+    @Value("${nowcoder.path.domain}")
     private String domain;
-
-    @Value("${server.servlet.context-path}")
-    private String contextPath;
 
     @Operation(summary = "用户主页：基础信息 + 计数 + hasFollowed")
     @GetMapping("/{id}")
@@ -98,7 +95,7 @@ public class UserController {
         }
 
         User me = hostHolder.getUser();
-        String avatarUrl = domain + contextPath + "/api/v1/users/avatar/" + filename;
+        String avatarUrl = domain + "/api/v1/users/avatar/" + filename;
         userService.updateAvatar(me.getId(), avatarUrl);
         return Result.ok(avatarUrl);
     }

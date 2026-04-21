@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 
 /**
  * REST API 全局异常处理。
- * <p>只针对 @RestController 起作用；@Controller（Thymeleaf 老代码）仍走 ExceptionAdvice。
  * <p>Order 设为高优先级，保证业务异常优先被捕获。
  */
 @RestControllerAdvice(annotations = org.springframework.web.bind.annotation.RestController.class)

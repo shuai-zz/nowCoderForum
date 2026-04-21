@@ -25,7 +25,7 @@ import java.util.Date;
 import java.util.List;
 
 @Tag(name = "Message", description = "私信会话与消息")
-@RestController("apiMessageController")
+@RestController
 @RequestMapping("/api/v1/messages")
 @RequiredArgsConstructor
 public class MessageController {

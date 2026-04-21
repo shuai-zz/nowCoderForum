@@ -24,7 +24,7 @@ import java.util.List;
 import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_POST;
 
 @Tag(name = "Search", description = "帖子全文搜索（Elasticsearch）")
-@RestController("apiSearchController")
+@RestController
 @RequestMapping("/api/v1/search")
 @RequiredArgsConstructor
 public class SearchController {

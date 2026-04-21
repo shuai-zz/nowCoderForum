@@ -11,7 +11,6 @@ import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.test.context.ContextConfiguration;
-import org.thymeleaf.spring6.context.SpringContextUtils;
 
 import java.util.concurrent.TimeUnit;
 

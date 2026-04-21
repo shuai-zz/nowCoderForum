@@ -1,13 +1,10 @@
 package org.example.nowcoder.service.impl;
 
-import com.github.pagehelper.PageHelper;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.example.nowcoder.entity.DiscussPost;
 import org.example.nowcoder.entity.LoginTicket;
 import org.example.nowcoder.entity.User;
-import org.example.nowcoder.mapper.LoginTicketMapper;
 import org.example.nowcoder.mapper.UserMapper;
 import org.example.nowcoder.service.UserService;
 import org.example.nowcoder.utils.ForumUtil;
@@ -20,8 +17,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.thymeleaf.TemplateEngine;
-import org.thymeleaf.context.Context;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -36,17 +31,9 @@ import static org.example.nowcoder.utils.ForumConstant.*;
 public class UserServiceImpl implements UserService, UserDetailsService {
     private final UserMapper userMapper;
     private final MailClient mailClient;
-    private final TemplateEngine templateEngine;
     private final RedisTemplate<String, Object> redisTemplate;
-    // private final LoginTicketMapper loginTicketMapper;
 
-    @Value("${nowCoder.path.domain}")
-    private String domain;
-
-    @Value("${server.servlet.context-path}")
-    private String contextPath;
-
-    @Value("${nowCoder.path.frontend}")
+    @Value("${nowcoder.path.frontend}")
     private String frontendDomain;
 
     @Override
@@ -112,12 +99,16 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         userMapper.insertUser(user);
 
         //send activation email
-        Context context = new Context();
-        context.setVariable("email", user.getEmail());
         // 激活链接指向前端激活落地页，由前端调用 POST /api/v1/auth/activate
         String url = frontendDomain + "/activate/" + user.getId() + "/" + user.getActivationCode();
-        context.setVariable("url", url);
-        String content = templateEngine.process("/mail/activation", context);
+        String content = """
+                <!doctype html>
+                <html><body>
+                <p>Hi, <b>%s</b></p>
+                <p>You are registering for a new account on nowCoder Forum. Click
+                <a href="%s">this link</a> to activate your account.</p>
+                </body></html>
+                """.formatted(user.getEmail(), url);
         mailClient.sendMail(user.getEmail(), "Activation", content);
 
         return map;

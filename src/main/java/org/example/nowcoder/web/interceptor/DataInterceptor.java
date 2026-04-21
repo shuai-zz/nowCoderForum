@@ -1,4 +1,4 @@
-package org.example.nowcoder.controller.interceptor;
+package org.example.nowcoder.web.interceptor;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

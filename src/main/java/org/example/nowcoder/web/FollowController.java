@@ -33,7 +33,7 @@ import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_USER;
 import static org.example.nowcoder.utils.ForumConstant.TOPIC_FOLLOW;
 
 @Tag(name = "Follow", description = "关注 / 取关 / 关注列表 / 粉丝列表")
-@RestController("apiFollowController")
+@RestController
 @RequiredArgsConstructor
 public class FollowController {
 

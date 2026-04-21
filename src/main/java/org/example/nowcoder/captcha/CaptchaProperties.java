@@ -4,18 +4,18 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * 验证码相关配置。通过 {@code nowCoder.captcha.*} 绑定。
+ * 验证码相关配置。通过 {@code nowcoder-captcha.*} 绑定。
  *
  * <p>腾讯云验证码字段仅在 {@code provider=tencent} 时生效。凭据建议用 env 注入：
  * <pre>
- *   nowCoder.captcha.tencent.secret-id: ${TENCENT_SECRET_ID}
- *   nowCoder.captcha.tencent.secret-key: ${TENCENT_SECRET_KEY}
- *   nowCoder.captcha.tencent.captcha-app-id: ${TENCENT_CAPTCHA_APP_ID}
- *   nowCoder.captcha.tencent.app-secret-key: ${TENCENT_CAPTCHA_APP_SECRET_KEY}
+ *   nowcoder-captcha.tencent.secret-id: ${TENCENT_SECRET_ID}
+ *   nowcoder-captcha.tencent.secret-key: ${TENCENT_SECRET_KEY}
+ *   nowcoder-captcha.tencent.captcha-app-id: ${TENCENT_CAPTCHA_APP_ID}
+ *   nowcoder-captcha.tencent.app-secret-key: ${TENCENT_CAPTCHA_APP_SECRET_KEY}
  * </pre>
  */
 @Data
-@ConfigurationProperties(prefix = "nowCoder.captcha")
+@ConfigurationProperties(prefix = "nowcoder-captcha")
 public class CaptchaProperties {
 
     /** kaptcha（默认）或 tencent */

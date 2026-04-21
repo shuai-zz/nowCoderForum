@@ -23,7 +23,7 @@ import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_POST;
 import static org.example.nowcoder.utils.ForumConstant.TOPIC_LIKE;
 
 @Tag(name = "Like", description = "点赞 / 取消点赞（同接口 toggle）")
-@RestController("apiLikeController")
+@RestController
 @RequestMapping("/api/v1/likes")
 @RequiredArgsConstructor
 public class LikeController {
