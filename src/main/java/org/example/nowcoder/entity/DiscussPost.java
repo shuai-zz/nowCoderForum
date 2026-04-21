@@ -33,7 +33,7 @@ public class DiscussPost {
     private Date createTime;
     @Field(type=FieldType.Integer)
     private int commentCount;
-    @Field(type=FieldType.Date)
+    @Field(type=FieldType.Double)
     private double score;
 
     public int getId() {
