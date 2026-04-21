@@ -52,7 +52,12 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 log.debug("Invalid or expired ticket");
             }
         }
-        chain.doFilter(request, response);
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            hostHolder.clear();
+            SecurityContextHolder.clearContext();
+        }
     }
 
     private String extractTicket(HttpServletRequest request) {
