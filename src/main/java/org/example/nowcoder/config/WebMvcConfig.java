@@ -1,20 +1,49 @@
 package org.example.nowcoder.config;
 
 import lombok.RequiredArgsConstructor;
-import org.example.nowcoder.web.interceptor.DataInterceptor;
+import org.example.nowcoder.controller.interceptor.DataInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * @author zhaoshuai
+ */
 @Configuration
-@RequiredArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final DataInterceptor dataInterceptor;
 
+    public WebMvcConfig(DataInterceptor dataInterceptor) {
+        this.dataInterceptor = dataInterceptor;
+    }
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(dataInterceptor)
-                .excludePathPatterns("/**/*.css", "/**/*.js", "/**/*.png", "/**/*.jpg", "/**/*.jpeg");
+                .excludePathPatterns(
+                        // 静态资源
+                        "/**/*.css",
+                        "/**/*.js",
+                        "/**/*.png",
+                        "/**/*.jpg",
+                        "/**/*.jpeg",
+                        "/**/*.gif",
+                        "/**/*.svg",
+                        "/**/*.ico",
+                        "/**/*.woff",
+                        "/**/*.woff2",
+                        "/**/*.ttf",
+                        "/**/*.eot",
+                        // Swagger UI 相关
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**",
+                        "/webjars/**",
+                        // Actuator 健康检查
+                        "/actuator/**",
+                        // 错误页面
+                        "/error"
+                );
     }
 }
