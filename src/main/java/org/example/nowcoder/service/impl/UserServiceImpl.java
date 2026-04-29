@@ -96,7 +96,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         user.setActivationCode(ForumUtil.generateUuid());
         user.setAvatarUrl(String.format("https://images.nowcoder.com/head/%dt.png", new Random().nextInt(1000)));
         user.setCreateTime(new Date());
-        userMapper.insertUser(user);
+        userMapper.insert(user);
 
         //send activation email
         // 激活链接指向前端激活落地页，由前端调用 POST /api/v1/auth/activate

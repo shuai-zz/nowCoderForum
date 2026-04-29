@@ -17,7 +17,9 @@ public record UserVO(
         Date createTime
 ) {
     public static UserVO from(User u) {
-        if (u == null) return null;
+        if (u == null) {
+            return null;
+        }
         return new UserVO(
                 u.getId(),
                 u.getUsername(),

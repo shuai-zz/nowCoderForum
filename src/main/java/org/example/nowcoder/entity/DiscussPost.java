@@ -3,6 +3,9 @@ package org.example.nowcoder.entity;
 
 
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -14,9 +17,11 @@ import java.util.Date;
 /**
  * @author 23211
  */
+@TableName("discuss_post")
 @Document(indexName = "discusspost")
 @Setting(shards = 6, replicas = 3)
 public class DiscussPost {
+    @TableId(type = IdType.AUTO)
     @Id
     private int id;
     @Field(type= FieldType.Integer)

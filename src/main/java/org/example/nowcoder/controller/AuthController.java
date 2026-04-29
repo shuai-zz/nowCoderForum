@@ -15,13 +15,15 @@ import org.example.nowcoder.exception.AuthException;
 import org.example.nowcoder.exception.ValidationException;
 import org.example.nowcoder.service.UserService;
 import org.example.nowcoder.utils.ForumUtil;
-import org.example.nowcoder.utils.HostHolder;
 import org.example.nowcoder.utils.RedisKeyUtil;
 import org.example.nowcoder.controller.common.Result;
 import org.example.nowcoder.entity.dto.LoginRequest;
 import org.example.nowcoder.entity.dto.RegisterRequest;
 import org.example.nowcoder.entity.vo.LoginVO;
 import org.example.nowcoder.entity.vo.UserVO;
+import org.example.nowcoder.utils.SecurityUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -38,20 +40,28 @@ import java.util.stream.Collectors;
 
 import static org.example.nowcoder.utils.ForumConstant.*;
 
+/**
+ * @author zhaoshuai
+ */
 @Tag(name = "Auth", description = "认证相关：注册 / 激活 / 登录 / 登出 / 验证码 / 当前用户")
 @RestController
 @RequestMapping("/api/v1/auth")
-@RequiredArgsConstructor
-@Slf4j
 public class AuthController {
 
     private static final int CAPTCHA_EXPIRE_SECONDS = 60;
+    final Logger log= LoggerFactory.getLogger(getClass());
 
     private final UserService userService;
     private final Producer kaptchaProducer;
     private final RedisTemplate<String, String> redisTemplate;
-    private final HostHolder hostHolder;
     private final CaptchaVerifier captchaVerifier;
+
+    public AuthController(UserService userService, Producer kaptchaProducer, RedisTemplate<String, String> redisTemplate, CaptchaVerifier captchaVerifier) {
+        this.userService = userService;
+        this.kaptchaProducer = kaptchaProducer;
+        this.redisTemplate = redisTemplate;
+        this.captchaVerifier = captchaVerifier;
+    }
 
     @Operation(summary = "注册：成功后向注册邮箱发送激活邮件")
     @PostMapping("/register")
@@ -134,10 +144,7 @@ public class AuthController {
     @Operation(summary = "获取当前登录用户")
     @GetMapping("/me")
     public Result<UserVO> me() {
-        User user = hostHolder.getUser();
-        if (user == null) {
-            throw new AuthException("Not authenticated");
-        }
+        User user = SecurityUtil.getCurrentUser();
         return Result.ok(UserVO.from(user));
     }
 

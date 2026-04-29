@@ -1,5 +1,8 @@
 package org.example.nowcoder.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -20,8 +23,10 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@TableName("user")
 @JsonIgnoreProperties(value = {"authorities", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled"}, ignoreUnknown = true)
 public class User implements UserDetails {
+    @TableId(type = IdType.AUTO)
     private int id;
     private String username;
     private String password;

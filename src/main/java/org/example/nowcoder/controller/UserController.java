@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.example.nowcoder.entity.User;
 import org.example.nowcoder.exception.ResourceNotFoundException;
@@ -14,11 +13,13 @@ import org.example.nowcoder.service.FollowService;
 import org.example.nowcoder.service.LikeService;
 import org.example.nowcoder.service.UserService;
 import org.example.nowcoder.utils.ForumUtil;
-import org.example.nowcoder.utils.HostHolder;
 import org.example.nowcoder.controller.common.Result;
 import org.example.nowcoder.entity.dto.ChangePasswordRequest;
 import org.example.nowcoder.entity.vo.UserProfileVO;
 import org.example.nowcoder.entity.vo.UserVO;
+import org.example.nowcoder.utils.SecurityUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -35,19 +36,23 @@ import java.util.Set;
 
 import static org.example.nowcoder.utils.ForumConstant.ENTITY_TYPE_USER;
 
+/**
+ * @author zhaoshuai
+ */
 @Tag(name = "User", description = "用户主页 / 头像 / 改密")
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-@Slf4j
 public class UserController {
+    final Logger log= LoggerFactory.getLogger(getClass());
 
     private static final Set<String> SUPPORTED_AVATAR_EXT = Set.of(".jpg", ".jpeg", ".png");
 
     private final UserService userService;
     private final LikeService likeService;
     private final FollowService followService;
-    private final HostHolder hostHolder;
+    // private final HostHolder hostHolder;
+
 
     @Value("${nowcoder.path.upload}")
     private String uploadPath;
@@ -65,7 +70,7 @@ public class UserController {
         long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_USER, id);
         long followeeCount = followService.findFolloweeCount(id, ENTITY_TYPE_USER);
         long followerCount = followService.findFollowerCount(ENTITY_TYPE_USER, id);
-        User me = hostHolder.getUser();
+        User me = SecurityUtil.getCurrentUser();
         boolean hasFollowed = me != null && followService.hasFollowed(me.getId(), ENTITY_TYPE_USER, id);
 
         return Result.ok(new UserProfileVO(
@@ -94,7 +99,7 @@ public class UserController {
             throw new RuntimeException("Failed to upload avatar", e);
         }
 
-        User me = hostHolder.getUser();
+        User me = SecurityUtil.getCurrentUser();
         String avatarUrl = domain + "/api/v1/users/avatar/" + filename;
         userService.updateAvatar(me.getId(), avatarUrl);
         return Result.ok(avatarUrl);
@@ -126,7 +131,7 @@ public class UserController {
         if (!req.newPassword().equals(req.confirmPassword())) {
             throw new ValidationException("Passwords do not match");
         }
-        User me = hostHolder.getUser();
+        User me = SecurityUtil.getCurrentUser();
         Map<String, Object> errors = userService.updatePassword(me.getId(), req.oldPassword(), req.newPassword());
         if (errors != null && !errors.isEmpty()) {
             throw new ValidationException(String.join("; ",

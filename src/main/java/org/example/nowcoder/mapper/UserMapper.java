@@ -1,34 +1,38 @@
 package org.example.nowcoder.mapper;
 
-import org.apache.ibatis.annotations.*;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 import org.example.nowcoder.entity.User;
 
 /**
  * @author 23211
  */
 @Mapper
-public interface UserMapper {
-    @Select("select * from user where id=#{id}")
-    User selectById(int id);
+public interface UserMapper extends BaseMapper<User> {
 
     @Select("select * from user where username=#{username}")
     User selectByName(String username);
 
-    @Select("select * from user where email= #{email}")
+    @Select("select * from user where email=#{email}")
     User selectByEmail(String email);
 
+    default int updateStatus(int id, int status) {
+        return update(null, Wrappers.<User>lambdaUpdate()
+                .set(User::getStatus, status)
+                .eq(User::getId, id));
+    }
 
-    @Insert("insert into user(username,password,salt,email,type,status,activation_code,avatar_url,create_time) " +
-            "values(#{username},#{password},#{salt},#{email},#{type},#{status},#{activationCode},#{avatarUrl},#{createTime})")
-    @Options(useGeneratedKeys = true, keyProperty = "id")
-    int insertUser(User user);
+    default int updateAvatar(int id, String avatarUrl) {
+        return update(null, Wrappers.<User>lambdaUpdate()
+                .set(User::getAvatarUrl, avatarUrl)
+                .eq(User::getId, id));
+    }
 
-    @Update("update user set status=#{status} where id=#{id}")
-    int updateStatus(int id, int status);
-
-    @Update("update user set avatar_url= #{avatarUrl} where id= #{id}")
-    int updateAvatar(int id, String avatarUrl);
-
-    @Update("update user set password= #{password} where id= #{id}")
-    int updatePassword(int id, String password);
+    default int updatePassword(int id, String password) {
+        return update(null, Wrappers.<User>lambdaUpdate()
+                .set(User::getPassword, password)
+                .eq(User::getId, id));
+    }
 }
