@@ -40,7 +40,7 @@ build/
 ### Maven Wrapper ###
 mvnw
 mvnw.cmd
-.mvn/
+.mvn
 
 ### Logs ###
 *.log
@@ -53,3 +53,4 @@ Thumbs.db
 *.swp
 *.swo
 *~
+/.mvn/
