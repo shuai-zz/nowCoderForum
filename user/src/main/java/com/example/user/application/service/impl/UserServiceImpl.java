@@ -186,29 +186,23 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public Map<String, Object> updatePassword(int id, String oldPassword, String newPassword) {
-        HashMap<String, Object> map = new HashMap<>();
+    public void updatePassword(int id, String oldPassword, String newPassword) {
         User user = baseMapper.selectById(id);
         oldPassword = ForumUtil.md5(oldPassword + user.getSalt());
         if (!oldPassword.equals(user.getPassword())) {
-            map.put("oldPasswordMsg", "Incorrect Password");
-            return map;
+            throw new ValidationException("Incorrect Password");
         }
         if (newPassword.length() < 8) {
-            map.put("newPasswordMsg", "Password length must be greater than 8");
-            return map;
+            throw new ValidationException("Password length must be greater than 8");
         }
         if (newPassword.equals(oldPassword)) {
-            map.put("newPasswordMsg", "New password cannot be the same as the old password");
-            return map;
+            throw new ValidationException("New password cannot be the same as the old password");
         }
         try {
             baseMapper.updatePassword(id, ForumUtil.md5(newPassword + user.getSalt()));
         } catch (Exception e) {
-            map.put("newPasswordMsg", "Failed to update password");
-            return map;
+            throw new ValidationException("Failed to update password");
         }
-        return map;
     }
 
     @Override

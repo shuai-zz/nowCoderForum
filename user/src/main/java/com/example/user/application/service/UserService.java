@@ -23,7 +23,7 @@ public interface UserService extends IService<User> {
 
     int updateAvatar(int id, String avatarUrl);
 
-    Map<String, Object> updatePassword(int id, String oldPassword, String newPassword);
+    void updatePassword(int id, String oldPassword, String newPassword);
 
     User findUserByName(String toName);
 

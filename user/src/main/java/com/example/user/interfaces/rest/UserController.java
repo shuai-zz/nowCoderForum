@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.Set;
 
 import static com.example.shared.common.constant.ForumConstant.ENTITY_TYPE_USER;
@@ -52,7 +51,6 @@ public class UserController {
     private final UserService userService;
     private final LikeService likeService;
     private final FollowService followService;
-    // private final HostHolder hostHolder;
 
 
     @Value("${nowcoder.path.upload}")
@@ -133,11 +131,7 @@ public class UserController {
             throw new ValidationException("Passwords do not match");
         }
         User me = SecurityUtil.getCurrentUser();
-        Map<String, Object> errors = userService.updatePassword(me.getId(), req.oldPassword(), req.newPassword());
-        if (errors != null && !errors.isEmpty()) {
-            throw new ValidationException(String.join("; ",
-                    errors.values().stream().map(Object::toString).toList()));
-        }
+        userService.updatePassword(me.getId(), req.oldPassword(), req.newPassword());
         return Result.ok();
     }
 }
