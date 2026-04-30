@@ -1,4 +1,4 @@
-package org.example.nowcoder.application.service;
+package com.example.interaction.application.service;
 
 import java.util.List;
 import java.util.Map;
