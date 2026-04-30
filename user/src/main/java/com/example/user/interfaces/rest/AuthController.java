@@ -77,12 +77,8 @@ public class AuthController {
     @Operation(summary = "激活账户：由前端激活页调用（邮件链接点进去的落地页）")
     @PostMapping("/activate/{userId}/{code}")
     public Result<Void> activate(@PathVariable int userId, @PathVariable String code) {
-        int result = userService.activation(userId, code);
-        return switch (result) {
-            case ACTIVATION_SUCCESS -> Result.ok();
-            case ACTIVATION_REPEAT -> Result.fail(1, "Account already activated");
-            default -> throw new ValidationException("Invalid activation code");
-        };
+        userService.activation(userId, code);
+        return Result.ok();
     }
 
     @Operation(summary = "图形验证码（仅 Kaptcha 模式使用）：响应头 X-Captcha-Owner 返回 owner")

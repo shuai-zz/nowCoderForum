@@ -14,7 +14,7 @@ import java.util.Map;
  */
 public interface UserService extends IService<User> {
     void register(User user);
-    int activation(int userId, String code);
+    void activation(int userId, String code);
     LoginResult login(String username, String password, int expiredSeconds);
 
     void logout(String ticket);

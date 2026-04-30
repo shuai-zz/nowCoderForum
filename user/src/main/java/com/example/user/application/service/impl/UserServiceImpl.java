@@ -13,7 +13,6 @@ import com.example.user.domain.User;
 import com.example.user.infrastructure.mapper.UserMapper;
 import com.example.user.infrastructure.utils.MailClient;
 import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -111,17 +110,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public int activation(int userId, String code) {
-        User user = baseMapper.selectById(userId);
+    public void activation(int userId, String code) {
+        User user = this.getById(userId);
         if (user.getStatus() == 1) {
-            return ACTIVATION_REPEAT;
-        } else if (user.getActivationCode().equals(code)) {
-            baseMapper.updateStatus(userId, 1);
-            clearCache(userId);
-            return ACTIVATION_SUCCESS;
-        } else {
-            return ACTIVATION_FAILURE;
+            throw new ValidationException("Account already activated");
         }
+        if (!Objects.equals(user.getActivationCode(), code)) {
+            throw new ValidationException("Invalid activation code");
+        }
+        baseMapper.updateStatus(userId, 1);
+        clearCache(userId);
     }
 
     @Override
@@ -142,7 +140,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
 
         password = ForumUtil.md5(password + user.getSalt());
-//
         if(!password.equals(user.getPassword())){
             throw new AuthException("Password error");
         }
