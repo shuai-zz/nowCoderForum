@@ -32,7 +32,25 @@ build/
 ### VS Code ###
 .vscode/
 
-### .env ###
+### Environment Files ###
 .env
+.env.example
+.claude
 
+### Maven Wrapper ###
+mvnw
+mvnw.cmd
+.mvn
+
+### Logs ###
 *.log
+
+### OS Files ###
+.DS_Store
+Thumbs.db
+
+### IDE Specific ###
+*.swp
+*.swo
+*~
+/.mvn/
