@@ -1,4 +1,4 @@
-package org.example.nowcoder.application.service;
+package com.example.interaction.application.service;
 
 /**
  * @author 23211

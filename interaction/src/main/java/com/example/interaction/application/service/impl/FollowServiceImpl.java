@@ -1,4 +1,4 @@
-package org.example.nowcoder.application.service.impl;
+package com.example.interaction.application.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.example.nowcoder.domain.entity.User;
