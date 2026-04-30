@@ -1,9 +1,9 @@
-package org.example.nowcoder.application.service;
+package com.example.user.application.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import org.example.nowcoder.domain.entity.LoginTicket;
-import org.example.nowcoder.domain.entity.User;
-import org.example.nowcoder.application.dto.LoginResult;
+import com.example.user.application.dto.LoginResult;
+import com.example.user.domain.LoginTicket;
+import com.example.user.domain.User;
 import org.springframework.security.core.GrantedAuthority;
 
 import java.util.Collection;
@@ -13,7 +13,7 @@ import java.util.Map;
  * @author 23211
  */
 public interface UserService extends IService<User> {
-    Map<String , Object> register(User user);
+    void register(User user);
     int activation(int userId, String code);
     LoginResult login(String username, String password, int expiredSeconds);
 

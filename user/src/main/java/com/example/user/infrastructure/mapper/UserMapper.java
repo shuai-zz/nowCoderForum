@@ -1,10 +1,10 @@
-package org.example.nowcoder.infrastructure.mapper;
+package com.example.user.infrastructure.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.example.user.domain.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
-import org.example.nowcoder.domain.entity.User;
 
 /**
  * @author 23211

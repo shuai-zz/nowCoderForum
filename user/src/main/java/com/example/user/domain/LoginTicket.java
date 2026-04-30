@@ -1,4 +1,4 @@
-package org.example.nowcoder.domain.entity;
+package com.example.user.domain;
 
 import lombok.*;
 

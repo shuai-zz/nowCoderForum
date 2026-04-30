@@ -1,5 +1,15 @@
-package org.example.nowcoder.interfaces.rest;
+package com.example.user.interfaces.rest;
 
+import com.example.shared.common.exception.ValidationException;
+import com.example.shared.common.result.Result;
+import com.example.shared.common.utils.ForumUtil;
+import com.example.shared.common.utils.RedisKeyUtil;
+import com.example.user.infrastructure.utils.SecurityUtil;
+import com.example.user.application.service.UserService;
+import com.example.user.domain.User;
+import com.example.user.interfaces.dto.LoginRequest;
+import com.example.user.interfaces.dto.RegisterRequest;
+import com.example.user.interfaces.vo.UserVO;
 import com.google.code.kaptcha.Producer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -8,17 +18,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.example.nowcoder.infrastructure.captcha.CaptchaContext;
 import org.example.nowcoder.infrastructure.captcha.CaptchaVerifier;
-import org.example.nowcoder.domain.entity.User;
-import org.example.nowcoder.exception.ValidationException;
-import org.example.nowcoder.application.service.UserService;
-import org.example.nowcoder.infrastructure.util.ForumUtil;
-import org.example.nowcoder.infrastructure.util.RedisKeyUtil;
-import org.example.nowcoder.interfaces.common.Result;
-import org.example.nowcoder.interfaces.dto.LoginRequest;
-import org.example.nowcoder.interfaces.dto.RegisterRequest;
-import org.example.nowcoder.interfaces.vo.LoginVO;
-import org.example.nowcoder.interfaces.vo.UserVO;
-import org.example.nowcoder.infrastructure.util.SecurityUtil;
+import com.example.user.interfaces.vo.LoginVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -31,11 +31,10 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
-import static org.example.nowcoder.infrastructure.util.ForumConstant.*;
+import static com.example.shared.common.constant.ForumConstant.*;
+
 
 /**
  * @author zhaoshuai
@@ -66,15 +65,12 @@ public class AuthController {
         if (!req.password().equals(req.confirmPassword())) {
             throw new ValidationException("Passwords do not match");
         }
-        User user = new User();
-        user.setUsername(req.username());
-        user.setPassword(req.password());
-        user.setEmail(req.email());
-
-        Map<String, Object> errors = userService.register(user);
-        if (errors != null && !errors.isEmpty()) {
-            throw new ValidationException(joinErrors(errors));
-        }
+        User user = User.builder()
+                .username(req.username())
+                .password(req.password())
+                .email(req.email())
+                .build();
+        userService.register(user);
         return Result.ok();
     }
 
@@ -148,11 +144,5 @@ public class AuthController {
         }
         String real = req.getHeader("X-Real-IP");
         return real != null && !real.isBlank() ? real : req.getRemoteAddr();
-    }
-
-    private String joinErrors(Map<String, Object> errors) {
-        return errors.values().stream()
-                .map(Object::toString)
-                .collect(Collectors.joining("; "));
     }
 }

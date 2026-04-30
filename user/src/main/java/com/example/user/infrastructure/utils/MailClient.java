@@ -1,4 +1,4 @@
-package org.example.nowcoder.infrastructure.util;
+package com.example.user.infrastructure.utils;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;

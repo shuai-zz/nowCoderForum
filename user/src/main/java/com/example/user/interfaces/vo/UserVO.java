@@ -1,6 +1,7 @@
-package org.example.nowcoder.interfaces.vo;
+package com.example.user.interfaces.vo;
 
-import org.example.nowcoder.domain.entity.User;
+
+import com.example.user.domain.User;
 
 import java.util.Date;
 

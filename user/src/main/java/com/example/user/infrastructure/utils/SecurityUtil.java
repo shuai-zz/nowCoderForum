@@ -1,7 +1,7 @@
-package com.example.shared.common.utils;
+package com.example.user.infrastructure.utils;
 
 import com.example.shared.common.exception.AuthException;
-import org.example.nowcoder.domain.entity.User;
+import com.example.user.domain.User;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 

@@ -2,7 +2,6 @@ package org.example.nowcoder.infrastructure.interceptor;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.example.nowcoder.domain.entity.User;
 import org.example.nowcoder.application.service.DataService;
 import org.example.nowcoder.infrastructure.util.HostHolder;

@@ -1,23 +1,24 @@
-package org.example.nowcoder.interfaces.rest;
+package com.example.user.interfaces.rest;
 
+import com.example.shared.common.exception.ResourceNotFoundException;
+import com.example.shared.common.exception.ValidationException;
+import com.example.shared.common.result.Result;
+import com.example.shared.common.utils.ForumUtil;
+import com.example.user.application.service.UserService;
+import com.example.user.domain.User;
+import com.example.user.infrastructure.utils.SecurityUtil;
+import com.example.user.interfaces.vo.UserProfileVO;
+import com.example.user.interfaces.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.example.nowcoder.domain.entity.User;
-import org.example.nowcoder.exception.ResourceNotFoundException;
-import org.example.nowcoder.exception.ValidationException;
 import org.example.nowcoder.application.service.FollowService;
 import org.example.nowcoder.application.service.LikeService;
-import org.example.nowcoder.application.service.UserService;
-import org.example.nowcoder.infrastructure.util.ForumUtil;
-import org.example.nowcoder.interfaces.common.Result;
+
 import org.example.nowcoder.interfaces.dto.ChangePasswordRequest;
-import org.example.nowcoder.interfaces.vo.UserProfileVO;
-import org.example.nowcoder.interfaces.vo.UserVO;
-import org.example.nowcoder.infrastructure.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,7 +35,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.Set;
 
-import static org.example.nowcoder.infrastructure.util.ForumConstant.ENTITY_TYPE_USER;
+import static com.example.shared.common.constant.ForumConstant.ENTITY_TYPE_USER;
 
 /**
  * @author zhaoshuai

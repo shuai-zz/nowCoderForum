@@ -1,18 +1,21 @@
-package org.example.nowcoder.application.service.impl;
+package com.example.user.application.service.impl;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.shared.common.exception.AuthException;
+import com.example.shared.common.exception.ValidationException;
+import com.example.shared.common.utils.ForumUtil;
+import com.example.shared.common.utils.RedisKeyUtil;
+import com.example.user.application.dto.LoginResult;
+import com.example.user.application.service.UserService;
+import com.example.user.domain.LoginTicket;
+import com.example.user.domain.User;
+import com.example.user.infrastructure.mapper.UserMapper;
+import com.example.user.infrastructure.utils.MailClient;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.example.nowcoder.domain.entity.LoginTicket;
-import org.example.nowcoder.domain.entity.User;
-import org.example.nowcoder.application.dto.LoginResult;
-import org.example.nowcoder.exception.AuthException;
-import org.example.nowcoder.exception.ValidationException;
-import org.example.nowcoder.infrastructure.mapper.UserMapper;
-import org.example.nowcoder.application.service.UserService;
-import org.example.nowcoder.infrastructure.util.ForumUtil;
-import org.example.nowcoder.infrastructure.util.MailClient;
-import org.example.nowcoder.infrastructure.util.RedisKeyUtil;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.GrantedAuthority;
@@ -25,7 +28,8 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static org.example.nowcoder.infrastructure.util.ForumConstant.*;
+import static com.example.shared.common.constant.ForumConstant.*;
+
 
 /**
  * @author 23211
@@ -57,48 +61,36 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
 
     @Override
-    public Map<String, Object> register(User user) {
-        Map<String, Object> map = new HashMap<>();
+    public void register(User user) {
         if (user == null) {
             throw new IllegalArgumentException("Parameter cannot be null");
         }
-        if (StringUtils.isBlank(user.getUsername())) {
-            map.put("usernameMsg", "Username cannot be empty");
-            return map;
+        String username = user.getUsername();
+        String password = user.getPassword();
+        String email = user.getEmail();
+
+        if (StringUtils.isBlank(username)) {
+            throw new ValidationException("Username cannot be empty");
         }
-        if (StringUtils.isBlank(user.getPassword())) {
-            map.put("passwordMsg", "Password cannot be empty");
-            return map;
+        if (StringUtils.isBlank(password)) {
+            throw new ValidationException("Password cannot be empty");
         }
-        if (StringUtils.isBlank(user.getEmail())) {
-            map.put("emailMsg", "Email cannot be empty");
-            return map;
+        if (StringUtils.isBlank(email)) {
+            throw new ValidationException("Email cannot be empty");
+        }
+        if (password.length() < 8) {
+            throw new ValidationException("Password length must be greater than 8");
         }
 
-        // Verify username
-        User u = baseMapper.selectByName(user.getUsername());
-        if (u != null) {
-            map.put("usernameMsg", "This username already exists");
-            return map;
+        if (baseMapper.exists(Wrappers.<User>lambdaQuery().eq(User::getUsername, username))) {
+            throw new ValidationException("This username already exists");
+        }
+        if (baseMapper.exists(Wrappers.<User>lambdaQuery().eq(User::getEmail, email))) {
+            throw new ValidationException("This email already exists");
         }
 
-        //verify password
-        if (user.getPassword().length() < 8) {
-            map.put("passwordMsg", "Password length must be greater than 8");
-            return map;
-        }
-
-
-        // Verify email
-        u = baseMapper.selectByEmail(user.getEmail());
-        if (u != null) {
-            map.put("emailMsg", "This email already exists");
-            return map;
-        }
-
-        // Register user
         user.setSalt(ForumUtil.generateUuid().substring(0, 5));
-        user.setPassword(ForumUtil.md5(user.getPassword() + user.getSalt()));
+        user.setPassword(ForumUtil.md5(password + user.getSalt()));
         user.setType(0);
         user.setStatus(0);
         user.setActivationCode(ForumUtil.generateUuid());
@@ -106,8 +98,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         user.setCreateTime(new Date());
         baseMapper.insert(user);
 
-        //send activation email
-        // 激活链接指向前端激活落地页，由前端调用 POST /api/v1/auth/activate
         String url = frontendDomain + "/activate/" + user.getId() + "/" + user.getActivationCode();
         String content = """
                 <!doctype html>
@@ -118,8 +108,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
                 </body></html>
                 """.formatted(user.getEmail(), url);
         mailClient.sendMail(user.getEmail(), "Activation", content);
-
-        return map;
     }
 
     @Override
@@ -154,15 +142,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
 
         password = ForumUtil.md5(password + user.getSalt());
-        if (!user.getPassword().equals(password)) {
+//
+        if(!password.equals(user.getPassword())){
             throw new AuthException("Password error");
         }
 
-//        LoginTicket loginTicket = new LoginTicket();
-//        loginTicket.setUserId(user.getId());
-//        loginTicket.setTicket(ForumUtil.generateUuid());
-//        loginTicket.setStatus(0);
-//        loginTicket.setExpired(new Date(System.currentTimeMillis() + expiredSeconds * 1000L));
         LoginTicket loginTicket=LoginTicket.builder()
                 .userId(user.getId())
                 .ticket(ForumUtil.generateUuid())
@@ -209,7 +193,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         HashMap<String, Object> map = new HashMap<>();
         User user = baseMapper.selectById(id);
         oldPassword = ForumUtil.md5(oldPassword + user.getSalt());
-        if (!user.getPassword().equals(oldPassword)) {
+        if (!oldPassword.equals(user.getPassword())) {
             map.put("oldPasswordMsg", "Incorrect Password");
             return map;
         }

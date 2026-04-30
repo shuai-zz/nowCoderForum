@@ -1,5 +1,6 @@
 package com.example.shared.common.utils;
 
+import jakarta.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.DigestUtils;
 
@@ -14,6 +15,7 @@ public class ForumUtil {
         return UUID.randomUUID().toString().replaceAll("-", "");
     }
 
+    @Nullable
     public static String md5(String key) {
         if (StringUtils.isBlank(key)) {
             return null;

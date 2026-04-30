@@ -1,14 +1,10 @@
-package org.example.nowcoder.domain.entity;
+package com.example.user.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Builder;
 import lombok.NonNull;
-import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -21,7 +17,7 @@ import java.util.List;
  * @author 23211
  */
 @TableName("user")
-@JsonIgnoreProperties(value = {"authorities", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled"}, ignoreUnknown = true)
+@Builder
 public class User implements UserDetails {
     @TableId(type = IdType.AUTO)
     private int id;
