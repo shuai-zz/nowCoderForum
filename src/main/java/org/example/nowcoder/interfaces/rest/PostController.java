@@ -1,6 +1,6 @@
 package org.example.nowcoder.interfaces.rest;
 
-import com.github.pagehelper.PageInfo;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -119,16 +119,16 @@ public class PostController {
         if (discussPostService.findDiscussPostById(id) == null) {
             throw new ResourceNotFoundException("Post not found: " + id);
         }
-        PageInfo<Comment> page = commentService.findCommentsByEntity(ENTITY_TYPE_POST, id, pageNum, pageSize);
+        Page<Comment> page = commentService.findCommentsByEntity(ENTITY_TYPE_POST, id, pageNum, pageSize);
 
         List<CommentVO> vos = new ArrayList<>();
-        if (page.getList() != null) {
-            for (Comment c : page.getList()) {
+        if (page.getRecords() != null) {
+            for (Comment c : page.getRecords()) {
                 vos.add(buildCommentVO(c));
             }
         }
         return Result.ok(new PageResult<>(
-                vos, page.getTotal(), page.getPageNum(), page.getPageSize(), page.getPages()));
+                vos, page.getTotal(), (int) page.getCurrent(), (int) page.getSize(), (int) page.getPages()));
     }
 
     @Operation(summary = "置顶（moderator）")
@@ -192,11 +192,11 @@ public class PostController {
         long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_COMMENT, c.getId());
         int likeStatus = currentUserLikeStatus(ENTITY_TYPE_COMMENT, c.getId());
 
-        PageInfo<Comment> repliesPage = commentService.findCommentsByEntity(
+        Page<Comment> repliesPage = commentService.findCommentsByEntity(
                 ENTITY_TYPE_COMMENT, c.getId(), 0, Integer.MAX_VALUE);
         List<ReplyVO> replies = new ArrayList<>();
-        if (repliesPage != null && repliesPage.getList() != null) {
-            for (Comment r : repliesPage.getList()) {
+        if (repliesPage != null && repliesPage.getRecords() != null) {
+            for (Comment r : repliesPage.getRecords()) {
                 replies.add(buildReplyVO(r));
             }
         }

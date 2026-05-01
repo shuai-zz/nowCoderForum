@@ -1,4 +1,4 @@
-package org.example.nowcoder.interfaces.dto;
+package com.example.interaction.interfaces.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

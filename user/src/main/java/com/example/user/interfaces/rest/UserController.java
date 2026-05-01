@@ -1,5 +1,7 @@
 package com.example.user.interfaces.rest;
 
+import com.example.interaction.application.service.FollowService;
+import com.example.interaction.application.service.LikeService;
 import com.example.shared.common.exception.ResourceNotFoundException;
 import com.example.shared.common.exception.ValidationException;
 import com.example.shared.common.result.Result;
@@ -15,8 +17,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.example.nowcoder.application.service.FollowService;
-import org.example.nowcoder.application.service.LikeService;
 
 import org.example.nowcoder.interfaces.dto.ChangePasswordRequest;
 import org.slf4j.Logger;

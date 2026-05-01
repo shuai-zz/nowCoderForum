@@ -1,4 +1,6 @@
-package org.example.nowcoder.interfaces.vo;
+package com.example.interaction.interfaces.vo;
+
+import com.example.user.interfaces.vo.UserVO;
 
 import java.util.Date;
 

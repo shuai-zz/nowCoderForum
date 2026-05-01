@@ -2,7 +2,6 @@ package org.example.nowcoder.application.service;
 
 import com.github.pagehelper.PageInfo;
 import org.example.nowcoder.domain.entity.Message;
-import org.example.nowcoder.domain.entity.Page;
 
 import java.util.List;
 

@@ -1,0 +1,69 @@
+package com.example.interaction.application.service.impl;
+
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.interaction.application.service.CommentService;
+import com.example.interaction.domain.entity.Comment;
+import com.example.interaction.infrastructure.mapper.CommentMapper;
+import com.example.shared.common.constant.ForumConstant;
+import com.example.shared.common.utils.SensitiveFilter;
+import lombok.RequiredArgsConstructor;
+import org.example.nowcoder.application.service.DiscussPostService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.HtmlUtils;
+
+/**
+ * @author zhaoshuai
+ */
+@Service
+@RequiredArgsConstructor
+public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> implements CommentService {
+
+    private final SensitiveFilter sensitiveFilter;
+    private final DiscussPostService discussPostService;
+
+    @Override
+    public Page<Comment> findCommentsByEntity(int entityType, int entityId, int pageNum, int pageSize) {
+        Page<Comment> page = new Page<>(pageNum, pageSize);
+        return baseMapper.selectPage(page, Wrappers.<Comment>lambdaQuery()
+                .eq(Comment::getEntityId, entityId)
+                .eq(Comment::getEntityType, entityType)
+                .eq(Comment::getStatus, 0)
+                .orderByAsc(Comment::getCreateTime));
+    }
+
+    @Override
+    public int findCommentCount(int entityType, int entityId) {
+        return baseMapper.selectCount(Wrappers.<Comment>lambdaQuery()
+                .eq(Comment::getEntityType, entityType)
+                .eq(Comment::getEntityId, entityId)
+                .eq(Comment::getStatus, 0)).intValue();
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED, propagation = Propagation.REQUIRED)
+    @Override
+    public int addComment(Comment comment) {
+        if (comment == null) {
+            throw new IllegalArgumentException("parameter cannot be null");
+        }
+        comment.setContent(HtmlUtils.htmlEscape(comment.getContent()));
+        comment.setContent(sensitiveFilter.filter(comment.getContent()));
+        int rows = baseMapper.insert(comment);
+
+        if (comment.getEntityType() == ForumConstant.ENTITY_TYPE_POST) {
+            int count = findCommentCount(comment.getEntityType(), comment.getEntityId());
+            discussPostService.updateCommentCount(comment.getEntityId(), count);
+        }
+        return rows;
+    }
+
+    @Override
+    public Comment findCommentById(int id) {
+        return baseMapper.selectById(id);
+    }
+
+}

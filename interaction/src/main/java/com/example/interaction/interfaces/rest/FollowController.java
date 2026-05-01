@@ -1,21 +1,23 @@
-package org.example.nowcoder.interfaces.rest;
+package com.example.interaction.interfaces.rest;
 
+import com.example.interaction.application.dto.FollowListItem;
+import com.example.interaction.application.service.FollowService;
+import com.example.interaction.interfaces.dto.FollowRequest;
+import com.example.shared.common.exception.ResourceNotFoundException;
+import com.example.shared.common.result.PageResult;
+import com.example.shared.common.result.Result;
+import com.example.user.application.service.UserService;
+import com.example.user.domain.User;
+import com.example.user.interfaces.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.nowcoder.domain.entity.Event;
-import org.example.nowcoder.domain.entity.User;
+
 import org.example.nowcoder.infrastructure.messaging.EventProducer;
-import org.example.nowcoder.exception.ResourceNotFoundException;
-import org.example.nowcoder.application.service.FollowService;
-import org.example.nowcoder.application.service.UserService;
-import org.example.nowcoder.infrastructure.util.HostHolder;
-import org.example.nowcoder.interfaces.common.PageResult;
-import org.example.nowcoder.interfaces.common.Result;
-import org.example.nowcoder.interfaces.dto.FollowRequest;
-import org.example.nowcoder.interfaces.vo.FollowUserVO;
-import org.example.nowcoder.interfaces.vo.UserVO;
+import com.example.interaction.interfaces.vo.FollowUserVO;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,14 +26,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import static org.example.nowcoder.infrastructure.util.ForumConstant.ENTITY_TYPE_USER;
-import static org.example.nowcoder.infrastructure.util.ForumConstant.TOPIC_FOLLOW;
+import static com.example.shared.common.constant.ForumConstant.ENTITY_TYPE_USER;
+import static com.example.shared.common.constant.ForumConstant.TOPIC_FOLLOW;
 
+
+/**
+ * @author zhaoshuai
+ */
 @Tag(name = "Follow", description = "关注 / 取关 / 关注列表 / 粉丝列表")
 @RestController
 @RequiredArgsConstructor
@@ -39,13 +42,11 @@ public class FollowController {
 
     private final FollowService followService;
     private final UserService userService;
-    private final HostHolder hostHolder;
     private final EventProducer eventProducer;
 
     @Operation(summary = "关注")
     @PostMapping("/api/v1/follows")
-    public Result<Void> follow(@Valid @RequestBody FollowRequest req) {
-        User me = hostHolder.getUser();
+    public Result<Void> follow(@AuthenticationPrincipal User me, @Valid @RequestBody FollowRequest req) {
         followService.follow(me.getId(), req.entityType(), req.entityId());
 
         eventProducer.fireEvent(new Event()
@@ -59,8 +60,7 @@ public class FollowController {
 
     @Operation(summary = "取消关注")
     @DeleteMapping("/api/v1/follows/{entityType}/{entityId}")
-    public Result<Void> unfollow(@PathVariable int entityType, @PathVariable int entityId) {
-        User me = hostHolder.getUser();
+    public Result<Void> unfollow(@AuthenticationPrincipal User me, @PathVariable int entityType, @PathVariable int entityId) {
         followService.unfollow(me.getId(), entityType, entityId);
         return Result.ok();
     }
@@ -68,6 +68,7 @@ public class FollowController {
     @Operation(summary = "用户关注列表")
     @GetMapping("/api/v1/users/{userId}/followees")
     public Result<PageResult<FollowUserVO>> followees(
+            @AuthenticationPrincipal User me,
             @PathVariable int userId,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "5") int pageSize
@@ -75,8 +76,8 @@ public class FollowController {
         requireUserExists(userId);
 
         long total = followService.findFolloweeCount(userId, ENTITY_TYPE_USER);
-        List<Map<String, Object>> raw = followService.findFollowees(userId, pageNum, pageSize);
-        List<FollowUserVO> items = toFollowUserVOList(raw);
+        List<FollowListItem> raw = followService.findFollowees(userId, pageNum, pageSize);
+        List<FollowUserVO> items = toFollowUserVOList(me, raw);
 
         return Result.ok(buildPage(items, total, pageNum, pageSize));
     }
@@ -84,6 +85,7 @@ public class FollowController {
     @Operation(summary = "用户粉丝列表")
     @GetMapping("/api/v1/users/{userId}/followers")
     public Result<PageResult<FollowUserVO>> followers(
+            @AuthenticationPrincipal User me,
             @PathVariable int userId,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "5") int pageSize
@@ -91,8 +93,8 @@ public class FollowController {
         requireUserExists(userId);
 
         long total = followService.findFollowerCount(ENTITY_TYPE_USER, userId);
-        List<Map<String, Object>> raw = followService.findFollowers(userId, pageNum, pageSize);
-        List<FollowUserVO> items = toFollowUserVOList(raw);
+        List<FollowListItem> raw = followService.findFollowers(userId, pageNum, pageSize);
+        List<FollowUserVO> items = toFollowUserVOList(me,raw);
 
         return Result.ok(buildPage(items, total, pageNum, pageSize));
     }
@@ -105,17 +107,17 @@ public class FollowController {
         }
     }
 
-    private List<FollowUserVO> toFollowUserVOList(List<Map<String, Object>> raw) {
-        List<FollowUserVO> items = new ArrayList<>();
-        if (raw == null) return items;
-        User me = hostHolder.getUser();
-        for (Map<String, Object> m : raw) {
-            User u = (User) m.get("user");
-            if (u == null) continue;
-            boolean hasFollowed = me != null && followService.hasFollowed(me.getId(), ENTITY_TYPE_USER, u.getId());
-            items.add(new FollowUserVO(UserVO.from(u), (Date) m.get("followTime"), hasFollowed));
+    private List<FollowUserVO> toFollowUserVOList(User me, List<FollowListItem> raw) {
+        if (raw == null) {
+            return List.of();
         }
-        return items;
+        return raw.stream()
+                .map(item -> {
+                    boolean hasFollowed = me!=null&&followService.hasFollowed(me.getId(), ENTITY_TYPE_USER, item.user().getId());
+                    return new FollowUserVO(UserVO.from(item.user()), item.followTime(), hasFollowed);
+                })
+                .toList();
+
     }
 
     private <T> PageResult<T> buildPage(List<T> items, long total, int pageNum, int pageSize) {

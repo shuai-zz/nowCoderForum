@@ -1,5 +1,8 @@
 package com.example.interaction.application.service;
 
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.interaction.application.dto.FollowListItem;
+
 import java.util.List;
 import java.util.Map;
 
@@ -12,7 +15,7 @@ public interface FollowService {
     long findFolloweeCount(int userId, int entityType);
     long findFollowerCount(int entityType, int entityId);
     boolean hasFollowed(int userId, int entityType, int entityId);
-    List<Map<String,Object>> findFollowees(int userId, int pageNum, int pageSize);
-    List<Map<String,Object>> findFollowers(int userId, int pageNum, int pageSize);
+    List<FollowListItem> findFollowees(int userId, int pageNum, int pageSize);
+    List<FollowListItem> findFollowers(int userId, int pageNum, int pageSize);
 
 }

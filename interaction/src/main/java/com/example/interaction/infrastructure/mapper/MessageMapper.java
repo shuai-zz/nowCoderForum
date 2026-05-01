@@ -1,8 +1,8 @@
-package org.example.nowcoder.infrastructure.mapper;
+package com.example.interaction.infrastructure.mapper;
 
-import com.github.pagehelper.PageInfo;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.example.interaction.domain.entity.Message;
 import org.apache.ibatis.annotations.Mapper;
-import org.example.nowcoder.domain.entity.Message;
 
 import java.util.List;
 
@@ -10,7 +10,7 @@ import java.util.List;
  * @author 23211
  */
 @Mapper
-public interface MessageMapper {
+public interface MessageMapper extends BaseMapper<Message> {
     // 查询当前用户的会话列表，针对每个会话只返回一条最新的消息
     List<Message> selectConversations(int userId);
     // 查询当前用户的会话数量
