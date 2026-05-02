@@ -15,14 +15,19 @@ public record PageResult<T>(
         int pages
 ) {
 
-    public static <T> PageResult<T> of(PageInfo<T> p) {
-        return new PageResult<>(
-                p.getList(),
-                p.getTotal(),
-                p.getPageNum(),
-                p.getPageSize(),
-                p.getPages()
-        );
+//    public static <T> PageResult<T> of(PageInfo<T> p) {
+//        return new PageResult<>(
+//                p.getList(),
+//                p.getTotal(),
+//                p.getPageNum(),
+//                p.getPageSize(),
+//                p.getPages()
+//        );
+//    }
+
+    public static <T> PageResult<T> of(List<T> list, long total, int pageNum, int pageSize) {
+        int pages = pageSize == 0 ? 0 : (int) ((total + pageSize - 1) / pageSize);
+        return new PageResult<>(list, total, pageNum, pageSize, pages);
     }
 
     public static <T> PageResult<T> empty(int pageNum, int pageSize) {

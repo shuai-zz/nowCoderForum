@@ -6,15 +6,18 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.interaction.application.service.CommentService;
 import com.example.interaction.domain.entity.Comment;
 import com.example.interaction.infrastructure.mapper.CommentMapper;
+import com.example.post.application.service.DiscussPostService;
 import com.example.shared.common.constant.ForumConstant;
+import com.example.shared.common.result.PageData;
 import com.example.shared.common.utils.SensitiveFilter;
 import lombok.RequiredArgsConstructor;
-import org.example.nowcoder.application.service.DiscussPostService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.HtmlUtils;
+
+import java.util.List;
 
 /**
  * @author zhaoshuai
@@ -27,13 +30,10 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     private final DiscussPostService discussPostService;
 
     @Override
-    public Page<Comment> findCommentsByEntity(int entityType, int entityId, int pageNum, int pageSize) {
+    public PageData<Comment> findCommentsByEntity(int entityType, int entityId, int pageNum, int pageSize) {
         Page<Comment> page = new Page<>(pageNum, pageSize);
-        return baseMapper.selectPage(page, Wrappers.<Comment>lambdaQuery()
-                .eq(Comment::getEntityId, entityId)
-                .eq(Comment::getEntityType, entityType)
-                .eq(Comment::getStatus, 0)
-                .orderByAsc(Comment::getCreateTime));
+        List<Comment> list = baseMapper.selectCommentsByEntity(page, entityType, entityId);
+        return new PageData<>(list, page.getTotal());
     }
 
     @Override

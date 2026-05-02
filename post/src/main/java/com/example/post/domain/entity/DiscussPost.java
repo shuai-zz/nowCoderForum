@@ -1,4 +1,4 @@
-package org.example.nowcoder.domain.entity;
+package com.example.post.domain.entity;
 
 
 
@@ -6,6 +6,7 @@ package org.example.nowcoder.domain.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Builder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -20,6 +21,7 @@ import java.util.Date;
 @TableName("discuss_post")
 @Document(indexName = "discusspost")
 @Setting(shards = 6, replicas = 3)
+@Builder
 public class DiscussPost {
     @TableId(type = IdType.AUTO)
     @Id

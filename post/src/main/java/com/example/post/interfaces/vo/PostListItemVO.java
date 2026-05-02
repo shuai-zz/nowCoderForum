@@ -1,6 +1,7 @@
-package org.example.nowcoder.interfaces.vo;
+package com.example.post.interfaces.vo;
 
-import org.example.nowcoder.domain.entity.DiscussPost;
+import com.example.post.domain.entity.DiscussPost;
+import com.example.user.interfaces.vo.UserVO;
 
 import java.util.Date;
 
@@ -37,7 +38,9 @@ public record PostListItemVO(
     }
 
     private static String excerpt(String content) {
-        if (content == null) return "";
+        if (content == null) {
+            return "";
+        }
         return content.length() <= EXCERPT_LENGTH
                 ? content
                 : content.substring(0, EXCERPT_LENGTH) + "...";

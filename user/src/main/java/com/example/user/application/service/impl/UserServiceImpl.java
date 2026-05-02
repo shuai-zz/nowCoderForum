@@ -140,7 +140,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
 
         password = ForumUtil.md5(password + user.getSalt());
-        if(!password.equals(user.getPassword())){
+        if(!Objects.equals(password, user.getPassword())){
             throw new AuthException("Password error");
         }
 

@@ -1,9 +1,11 @@
-package org.example.nowcoder.infrastructure.mapper;
+package com.example.post.infrastructure.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.post.domain.entity.DiscussPost;
 import org.apache.ibatis.annotations.Mapper;
-import org.example.nowcoder.domain.entity.DiscussPost;
 
 import java.util.List;
 
@@ -12,7 +14,11 @@ import java.util.List;
  */
 @Mapper
 public interface DiscussPostMapper extends BaseMapper<DiscussPost> {
-    List<DiscussPost> selectDiscussPosts(int userId);
+    default List<DiscussPost> selectDiscussPosts(Page<DiscussPost> page, int userId) {
+        return selectList(page, Wrappers.<DiscussPost>lambdaQuery()
+                .eq(userId != 0, DiscussPost::getUserId, userId)
+                .orderByDesc(DiscussPost::getCreateTime));
+    }
 
     default int updateCommentCount(int id, int commentCount) {
         return update(null, Wrappers.<DiscussPost>lambdaUpdate()

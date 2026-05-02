@@ -1,6 +1,8 @@
 package org.example.nowcoder.interfaces.vo;
 
-import org.example.nowcoder.domain.entity.Comment;
+
+import com.example.interaction.domain.entity.Comment;
+import com.example.user.interfaces.vo.UserVO;
 
 import java.util.Date;
 
@@ -16,15 +18,15 @@ public record ReplyVO(
         int likeStatus,
         Date createTime
 ) {
-    public static ReplyVO of(Comment c, UserVO author, UserVO target, long likeCount, int likeStatus) {
+    public static ReplyVO of(Comment r, UserVO author, UserVO target, long likeCount, int likeStatus) {
         return new ReplyVO(
-                c.getId(),
-                c.getContent(),
+                r.getId(),
+                r.getContent(),
                 author,
                 target,
                 likeCount,
                 likeStatus,
-                c.getCreateTime()
+                r.getCreateTime()
         );
     }
 }

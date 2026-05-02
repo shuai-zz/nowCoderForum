@@ -1,6 +1,7 @@
 package com.example.interaction.interfaces.vo;
 
-import org.example.nowcoder.domain.entity.Comment;
+import com.example.interaction.domain.entity.Comment;
+import com.example.user.interfaces.vo.UserVO;
 import org.example.nowcoder.interfaces.vo.ReplyVO;
 
 import java.util.Date;

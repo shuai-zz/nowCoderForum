@@ -1,10 +1,8 @@
-package org.example.nowcoder.infrastructure.mapper;
+package com.example.post.infrastructure.mapper;
 
-import org.example.nowcoder.domain.entity.DiscussPost;
+import com.example.post.domain.entity.DiscussPost;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 import org.springframework.stereotype.Repository;
-
-import javax.annotation.Nonnull;
 
 /**
  * @author zhaoshuai

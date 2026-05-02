@@ -1,6 +1,8 @@
-package org.example.nowcoder.interfaces.vo;
+package com.example.post.interfaces.vo;
 
-import org.example.nowcoder.domain.entity.DiscussPost;
+
+import com.example.post.domain.entity.DiscussPost;
+import com.example.user.interfaces.vo.UserVO;
 
 import java.util.Date;
 
