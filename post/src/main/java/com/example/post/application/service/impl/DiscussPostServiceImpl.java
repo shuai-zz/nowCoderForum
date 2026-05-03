@@ -2,9 +2,8 @@ package com.example.post.application.service.impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.example.interaction.application.service.CommentService;
 import com.example.interaction.application.service.LikeService;
-import com.example.post.application.dto.PostListItem;
+import com.example.post.application.dto.PostItem;
 import com.example.post.application.service.DiscussPostService;
 import com.example.post.domain.entity.DiscussPost;
 import com.example.post.infrastructure.mapper.DiscussPostMapper;
@@ -33,19 +32,20 @@ public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, Discu
     private final UserService userService;
     private final LikeService likeService;
     @Override
-    public PageData<PostListItem> selectDiscussPosts(int pageNum, int pageSize, int userId) {
+    public PageData<PostItem> selectDiscussPosts(int pageNum, int pageSize, int userId) {
         Page<DiscussPost> page = new Page<>(pageNum, pageSize);
         List<DiscussPost> discussPosts = baseMapper.selectDiscussPosts(page, userId);
         List<Integer> ids = discussPosts.stream()
                 .map(DiscussPost::getUserId)
+                .distinct()
                 .toList();
         Map<Integer, User> userMap = userService.listByIds(ids).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
-        List<PostListItem> list = discussPosts.stream()
+        List<PostItem> list = discussPosts.stream()
                 .map(post -> {
                     User user = userMap.get(post.getUserId());
                     long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_POST, post.getId());
-                    return new PostListItem(post, user, likeCount);
+                    return new PostItem(post, user, likeCount, 0);
                 })
                 .toList();
         return new PageData<>(list, page.getTotal());
@@ -69,8 +69,12 @@ public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, Discu
     }
 
     @Override
-    public DiscussPost findDiscussPostById(int discussPostId) {
-        return baseMapper.selectById(discussPostId);
+    public PostItem findDiscussPostById(int discussPostId, int userId) {
+        DiscussPost discussPost = baseMapper.selectById(discussPostId);
+        User auth=userService.getById(discussPost.getUserId());
+        long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_POST, discussPostId);
+        int likeStatus = likeService.findEntityLikeStatus(userId, ENTITY_TYPE_POST, discussPostId);
+        return PostItem.of(discussPost, auth, likeCount, likeStatus);
     }
 
     @Override

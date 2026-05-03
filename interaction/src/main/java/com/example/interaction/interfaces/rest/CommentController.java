@@ -64,7 +64,7 @@ public class CommentController {
                 .setEntityType(req.entityType())
                 .setEntityId(req.entityId())
                 .setData("postId", req.postId());
-        commentEvent.setEntityUserId(resolveTargetOwner(req.entityType(), req.entityId()));
+        commentEvent.setEntityUserId(resolveTargetOwner(req.entityType(), req.entityId(), me.getId()));
         eventProducer.fireEvent(commentEvent);
 
         // 若是对帖子的一级评论：刷新帖子分数
@@ -80,9 +80,9 @@ public class CommentController {
         return Result.ok(c.getId());
     }
 
-    private int resolveTargetOwner(int entityType, int entityId) {
+    private int resolveTargetOwner(int entityType, int entityId, int currentUserId) {
         if (entityType == ENTITY_TYPE_POST) {
-            DiscussPost p = discussPostService.findDiscussPostById(entityId);
+            DiscussPost p = discussPostService.findDiscussPostById(entityId, currentUserId).discussPost();
             if (p == null) {
                 throw new ResourceNotFoundException("Post not found: " + entityId);
             }

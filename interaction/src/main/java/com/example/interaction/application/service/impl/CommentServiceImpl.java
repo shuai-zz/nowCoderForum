@@ -3,7 +3,9 @@ package com.example.interaction.application.service.impl;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.interaction.application.dto.CommentWithLike;
 import com.example.interaction.application.service.CommentService;
+import com.example.interaction.application.service.LikeService;
 import com.example.interaction.domain.entity.Comment;
 import com.example.interaction.infrastructure.mapper.CommentMapper;
 import com.example.post.application.service.DiscussPostService;
@@ -19,6 +21,8 @@ import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;
 
+import static com.example.shared.common.constant.ForumConstant.ENTITY_TYPE_COMMENT;
+
 /**
  * @author zhaoshuai
  */
@@ -28,6 +32,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     private final SensitiveFilter sensitiveFilter;
     private final DiscussPostService discussPostService;
+    private final LikeService likeService;
 
     @Override
     public PageData<Comment> findCommentsByEntity(int entityType, int entityId, int pageNum, int pageSize) {
@@ -66,4 +71,22 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         return baseMapper.selectById(id);
     }
 
+
+    @Override
+    public PageData<CommentWithLike> findCommentsWithLike(int entityType, int entityId, int pageNum, int pageSize, int currentUserId) {
+        Page<Comment> page=new Page<>(pageNum, pageSize);
+        List<Comment> comments = baseMapper.selectCommentsByEntity(page, entityType, entityId);
+        if(comments.isEmpty()){
+            return new PageData<>(List.of(), 0);
+        }
+        List<CommentWithLike> list = comments.stream()
+                .map(comment -> {
+                    long likeCount = likeService.findEntityLikeCount(entityType, comment.getId());
+                    int likeStatus = currentUserId == 0 ? 0 : likeService.findEntityLikeStatus(currentUserId, entityType, comment.getId());
+                    return CommentWithLike.of(comment, likeCount, likeStatus);
+                })
+                .toList();
+
+        return new PageData<>(list, page.getTotal());
+    }
 }

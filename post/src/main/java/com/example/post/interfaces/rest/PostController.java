@@ -1,11 +1,11 @@
 package com.example.post.interfaces.rest;
 
+import com.example.interaction.application.dto.CommentWithLike;
 import com.example.interaction.application.service.CommentService;
 import com.example.interaction.application.service.LikeService;
-import com.example.interaction.domain.entity.Comment;
 import com.example.interaction.interfaces.dto.CreatePostRequest;
 import com.example.interaction.interfaces.vo.CommentVO;
-import com.example.post.application.dto.PostListItem;
+import com.example.post.application.dto.PostItem;
 import com.example.post.application.service.DiscussPostService;
 import com.example.post.domain.entity.DiscussPost;
 import com.example.shared.common.exception.ResourceNotFoundException;
@@ -33,7 +33,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.example.shared.common.constant.ForumConstant.*;
@@ -68,7 +67,7 @@ public class PostController {
             @RequestParam(required = false) Integer userId
     ) {
         int uid = userId == null ? ALL_USERS : userId;
-        PageData<PostListItem> pageData = discussPostService.selectDiscussPosts(pageNum, pageSize, uid);
+        PageData<PostItem> pageData = discussPostService.selectDiscussPosts(pageNum, pageSize, uid);
         List<PostListItemVO> list = pageData.items().stream()
                 .map(item -> {
                     UserVO userVo = UserVO.from(item.author());
@@ -103,15 +102,14 @@ public class PostController {
 
     @Operation(summary = "帖子详情")
     @GetMapping("/{id}")
-    public Result<PostDetailVO> detail(@AuthenticationPrincipal User me,@PathVariable int id) {
-        DiscussPost post = discussPostService.findDiscussPostById(id);
-        if (post == null) {
+    public Result<PostDetailVO> detail(@AuthenticationPrincipal User me, @PathVariable int id) {
+
+        PostItem postItem = discussPostService.findDiscussPostById(id, me == null ? 0 : me.getId());
+        if (postItem.discussPost() == null) {
             throw new ResourceNotFoundException("Post not found: " + id);
         }
-        UserVO author = UserVO.from(userService.getById(post.getUserId()));
-        long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_POST, id);
-        int likeStatus = currentUserLikeStatus(me, ENTITY_TYPE_POST, id);
-        return Result.ok(PostDetailVO.of(post, author, likeCount, likeStatus));
+
+        return Result.ok(PostDetailVO.of(postItem.discussPost(), UserVO.from(postItem.author()), postItem.likeCount(), postItem.likeStatus()));
     }
 
     @Operation(summary = "帖子评论（含一层回复）")
@@ -122,66 +120,33 @@ public class PostController {
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "5") int pageSize
     ) {
-        if (discussPostService.findDiscussPostById(id) == null) {
-            throw new ResourceNotFoundException("Post not found: " + id);
-        }
-        // 查询一级评论
-        PageData<Comment> commentsPageData = commentService.findCommentsByEntity(ENTITY_TYPE_POST, id, pageNum, pageSize);
-        // 若无评论
-        if(commentsPageData.total() == 0){
+        int currentUserId = me == null ? 0 : me.getId();
+        requirePostExists(id, currentUserId);
+        // 一级评论
+        PageData<CommentWithLike> pageData = commentService.findCommentsWithLike(ENTITY_TYPE_POST, id, pageNum, pageSize, currentUserId);
+        if (pageData.total() == 0) {
             return Result.ok(PageResult.empty(pageNum, pageSize));
         }
-        // 批量查询一级评论作者
-        List<Integer> commentAuthIds = commentsPageData.items().stream()
-                .map(Comment::getUserId)
+
+        List<Integer> authorIds = pageData.items().stream()
+                .map(commentWithLike ->
+                        commentWithLike.comment().getUserId()
+                )
                 .distinct()
                 .toList();
-        Map<Integer, User> authorMap = userService.listByIds(commentAuthIds).stream()
+        Map<Integer, User> authorMap = userService.listByIds(authorIds).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
-        // 所有comment以及reply
-        List<CommentVO> commentsWithReplies = commentsPageData.items().stream()
-                .map(comment -> {
-                    UserVO commentAuthor = UserVO.from(authorMap.get(comment.getUserId()));
-                    long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_COMMENT, comment.getId());
-                    int likeStatus = currentUserLikeStatus(me, ENTITY_TYPE_COMMENT, comment.getId());
-                    // 获取reply
-                    PageData<Comment> repliesPageData = commentService.findCommentsByEntity(ENTITY_TYPE_COMMENT, comment.getId(), 0, Integer.MAX_VALUE);
-                    // 批量查询reply作者和reply的回复对象target
-                    List<Integer> replyAuthIds = repliesPageData.items().stream()
-                            .map(Comment::getUserId)
-                            .distinct()
-                            .toList();
-
-                    List<Integer> targetUserIds = repliesPageData.items().stream()
-                            .map(Comment::getTargetId)
-                            .distinct()
-                            .toList();
-
-                    Map<Integer, User> replyAuthorMap = userService.listByIds(replyAuthIds).stream()
-                            .collect(Collectors.toMap(User::getId, user -> user));
-                    Map<Integer, User> replyTargetMap = userService.listByIds(targetUserIds).stream()
-                            .collect(Collectors.toMap(User::getId, user -> user));
-                    // 该comment下所有reply
-                    List<ReplyVO> replies = repliesPageData.items().stream()
-                            .map(reply->{
-                                UserVO from = UserVO.from(replyAuthorMap.get(reply.getUserId()));
-                                UserVO to = reply.getTargetId() == 0 ? null : UserVO.from(replyTargetMap.get(reply.getTargetId()));
-                                long replyLikeCount = likeService.findEntityLikeCount(ENTITY_TYPE_COMMENT, reply.getId());
-                                int replyLikeStatus = currentUserLikeStatus(me, ENTITY_TYPE_COMMENT, reply.getId());
-
-                                return ReplyVO.of(reply, from, to, replyLikeCount, replyLikeStatus);
-                            }).toList();
-                    return CommentVO.of(comment, commentAuthor, likeCount, likeStatus, replies, repliesPageData.total());
-                }).toList();
-
-        // 最终结果
-        return Result.ok(PageResult.of(commentsWithReplies, commentsPageData.total(), pageNum, pageSize));
+        List<CommentVO> list = pageData.items().stream()
+                .map(commentWithLike -> buildCommentVo(commentWithLike, authorMap, me))
+                .toList();
+        return Result.ok(PageResult.of(list, pageData.total(), pageNum, pageSize));
     }
+
 
     @Operation(summary = "置顶（moderator）")
     @PatchMapping("/{id}/top")
     public Result<Void> top(@AuthenticationPrincipal User me, @PathVariable int id) {
-        requirePostExists(id);
+        requirePostExists(id, me.getId());
         discussPostService.updateType(id, POST_TYPE_TOP);
 
         eventProducer.fireEvent(new Event()
@@ -195,7 +160,7 @@ public class PostController {
     @Operation(summary = "加精（moderator）")
     @PatchMapping("/{id}/wonderful")
     public Result<Void> wonderful(@AuthenticationPrincipal User me, @PathVariable int id) {
-        requirePostExists(id);
+        requirePostExists(id, me.getId());
         discussPostService.updateStatus(id, POST_STATUS_WONDERFUL);
 
         eventProducer.fireEvent(new Event()
@@ -210,7 +175,7 @@ public class PostController {
     @Operation(summary = "删除（admin，软删）")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@AuthenticationPrincipal User me, @PathVariable int id) {
-        requirePostExists(id);
+        requirePostExists(id, me==null?0:me.getId());
         discussPostService.updateStatus(id, POST_STATUS_DELETED);
 
         eventProducer.fireEvent(new Event()
@@ -223,13 +188,45 @@ public class PostController {
 
     // ---- helpers ----
 
-    private void requirePostExists(int id) {
-        if (discussPostService.findDiscussPostById(id) == null) {
+    private void requirePostExists(int id, int currentUserId) {
+        if (discussPostService.findDiscussPostById(id, currentUserId).discussPost() == null) {
             throw new ResourceNotFoundException("Post not found: " + id);
         }
     }
 
     private int currentUserLikeStatus(User me, int entityType, int entityId) {
         return me == null ? 0 : likeService.findEntityLikeStatus(me.getId(), entityType, entityId);
+    }
+
+    private CommentVO buildCommentVo(CommentWithLike commentWithLike, Map<Integer, User> authorMap, User me) {
+        UserVO author = UserVO.from(authorMap.get(commentWithLike.comment().getUserId()));
+        // 查询该comment下所有reply
+        PageData<CommentWithLike> pageData = commentService.findCommentsWithLike(ENTITY_TYPE_COMMENT, commentWithLike.comment().getId(), 0, Integer.MAX_VALUE, me == null ? 0 : me.getId());
+        // 缓存reply的author和reply的target
+        List<Integer> authorReplyIds = pageData.items().stream()
+                .map(replyWithLike ->
+                        replyWithLike.comment().getUserId()
+                )
+                .distinct().toList();
+        List<Integer> targetReplyIds = pageData.items().stream()
+                .map(replyWithLike -> replyWithLike.comment().getTargetId())
+                .filter(targetId->targetId!=0)
+                .distinct().toList();
+        Map<Integer, User> authorReplyMap = userService.listByIds(authorReplyIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        Map<Integer, User> targetReplyMap = userService.listByIds(targetReplyIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        // 构建replyVO
+        List<ReplyVO> replies = pageData.items().stream()
+                .map(replyWithLike -> {
+                    UserVO from = UserVO.from(authorReplyMap.get(replyWithLike.comment().getUserId()));
+                    UserVO to = UserVO.from(targetReplyMap.get(replyWithLike.comment().getTargetId()));
+                    return ReplyVO.of(replyWithLike.comment(), from, to, replyWithLike.likeCount(), replyWithLike.likeStatus());
+                })
+                .toList();
+
+
+        return CommentVO.of(commentWithLike.comment(), author, commentWithLike.likeCount(), commentWithLike.likeStatus(),
+               replies, pageData.total());
     }
 }

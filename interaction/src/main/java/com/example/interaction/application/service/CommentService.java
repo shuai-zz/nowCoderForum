@@ -2,6 +2,7 @@ package com.example.interaction.application.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.interaction.application.dto.CommentWithLike;
 import com.example.interaction.domain.entity.Comment;
 import com.example.shared.common.result.PageData;
 
@@ -17,5 +18,7 @@ public interface CommentService extends IService<Comment> {
     int addComment(Comment comment);
 
     Comment findCommentById(int id);
+
+    PageData<CommentWithLike> findCommentsWithLike(int entityType, int entityId, int pageNum, int pageSize, int currentUserId);
 
 }
