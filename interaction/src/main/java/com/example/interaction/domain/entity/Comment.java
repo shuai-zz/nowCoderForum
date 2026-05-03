@@ -23,9 +23,9 @@ public class Comment {
 
     // 目标种类：帖子，评论
     private int entityType;
-
+    // 目标种类id
     private int entityId;
-
+    // 目标种类的作者id
     private int targetId;
 
     private String content;

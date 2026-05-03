@@ -34,18 +34,27 @@ public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, Discu
     @Override
     public PageData<PostItem> selectDiscussPosts(int pageNum, int pageSize, int userId) {
         Page<DiscussPost> page = new Page<>(pageNum, pageSize);
+        // 所有帖子
         List<DiscussPost> discussPosts = baseMapper.selectDiscussPosts(page, userId);
-        List<Integer> ids = discussPosts.stream()
+        // 获取所有帖子作者
+        List<Integer> authIds = discussPosts.stream()
                 .map(DiscussPost::getUserId)
                 .distinct()
                 .toList();
-        Map<Integer, User> userMap = userService.listByIds(ids).stream()
+        Map<Integer, User> userMap = userService.listByIds(authIds).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
+        // 获取所有帖子点赞数和当前登录用户点赞状态
+        List<Integer> postIds = discussPosts.stream()
+                .map(DiscussPost::getId)
+                .toList();
+        Map<Integer, Long> likeCountMap = likeService.findEntityLikeCounts(ENTITY_TYPE_POST, postIds);
+
         List<PostItem> list = discussPosts.stream()
                 .map(post -> {
+                    // TODO: 作者账号被删除，userMap.get()返回null， 可能有NPE问题
                     User user = userMap.get(post.getUserId());
-                    long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_POST, post.getId());
-                    return new PostItem(post, user, likeCount, 0);
+                    Long likeCount = likeCountMap.get(post.getId());
+                    return new PostItem(post, user, likeCount,0);
                 })
                 .toList();
         return new PageData<>(list, page.getTotal());
@@ -68,14 +77,6 @@ public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, Discu
         return baseMapper.insert(discussPost);
     }
 
-    @Override
-    public PostItem findDiscussPostById(int discussPostId, int userId) {
-        DiscussPost discussPost = baseMapper.selectById(discussPostId);
-        User auth=userService.getById(discussPost.getUserId());
-        long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_POST, discussPostId);
-        int likeStatus = likeService.findEntityLikeStatus(userId, ENTITY_TYPE_POST, discussPostId);
-        return PostItem.of(discussPost, auth, likeCount, likeStatus);
-    }
 
     @Override
     public int updateCommentCount(int entityId, int count) {
@@ -96,5 +97,14 @@ public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, Discu
     @Override
     public void updateScore(int postId, double score) {
         baseMapper.updateScore(postId,score);
+    }
+
+    @Override
+    public PostItem findDiscussPostById(int discussPostId, int userId) {
+        DiscussPost discussPost = baseMapper.selectById(discussPostId);
+        User auth = userService.getById(discussPost.getUserId());
+        long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_POST, discussPostId);
+        int likeStatus = likeService.findEntityLikeStatus(userId, ENTITY_TYPE_POST, discussPostId);
+        return PostItem.of(discussPost, auth, likeCount, likeStatus);
     }
 }

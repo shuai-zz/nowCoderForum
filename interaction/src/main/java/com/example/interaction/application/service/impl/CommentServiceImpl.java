@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.example.shared.common.constant.ForumConstant.ENTITY_TYPE_COMMENT;
 
@@ -75,16 +76,20 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     @Override
     public PageData<CommentWithLike> findCommentsWithLike(int entityType, int entityId, int pageNum, int pageSize, int currentUserId) {
         Page<Comment> page=new Page<>(pageNum, pageSize);
+        // 所有评论
         List<Comment> comments = baseMapper.selectCommentsByEntity(page, entityType, entityId);
         if(comments.isEmpty()){
             return new PageData<>(List.of(), 0);
         }
+        // 批量查询评论的点赞数和点赞状态
+        List<Integer> commentIds = comments.stream()
+                .map(Comment::getId)
+                .toList();
+        Map<Integer, Long> likeCountMap = likeService.findEntityLikeCounts(ENTITY_TYPE_COMMENT, commentIds);
+        Map<Integer, Integer> likeStatusMap = likeService.findEntityLikeStatuses(currentUserId, ENTITY_TYPE_COMMENT, commentIds);
+
         List<CommentWithLike> list = comments.stream()
-                .map(comment -> {
-                    long likeCount = likeService.findEntityLikeCount(entityType, comment.getId());
-                    int likeStatus = currentUserId == 0 ? 0 : likeService.findEntityLikeStatus(currentUserId, entityType, comment.getId());
-                    return CommentWithLike.of(comment, likeCount, likeStatus);
-                })
+                .map(comment -> CommentWithLike.of(comment, likeCountMap.get(comment.getId()), likeStatusMap.get(comment.getId())))
                 .toList();
 
         return new PageData<>(list, page.getTotal());

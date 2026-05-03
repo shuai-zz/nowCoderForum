@@ -2,7 +2,6 @@ package com.example.post.interfaces.rest;
 
 import com.example.interaction.application.dto.CommentWithLike;
 import com.example.interaction.application.service.CommentService;
-import com.example.interaction.application.service.LikeService;
 import com.example.interaction.interfaces.dto.CreatePostRequest;
 import com.example.interaction.interfaces.vo.CommentVO;
 import com.example.post.application.dto.PostItem;
@@ -55,7 +54,6 @@ public class PostController {
     private final DiscussPostService discussPostService;
     private final CommentService commentService;
     private final UserService userService;
-    private final LikeService likeService;
     private final EventProducer eventProducer;
     private final RedisTemplate<String, Object> redisTemplate;
 
@@ -127,7 +125,7 @@ public class PostController {
         if (pageData.total() == 0) {
             return Result.ok(PageResult.empty(pageNum, pageSize));
         }
-
+        // 一级comment作者Map
         List<Integer> authorIds = pageData.items().stream()
                 .map(commentWithLike ->
                         commentWithLike.comment().getUserId()
@@ -136,6 +134,7 @@ public class PostController {
                 .toList();
         Map<Integer, User> authorMap = userService.listByIds(authorIds).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
+
         List<CommentVO> list = pageData.items().stream()
                 .map(commentWithLike -> buildCommentVo(commentWithLike, authorMap, me))
                 .toList();
@@ -175,7 +174,7 @@ public class PostController {
     @Operation(summary = "删除（admin，软删）")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@AuthenticationPrincipal User me, @PathVariable int id) {
-        requirePostExists(id, me==null?0:me.getId());
+        requirePostExists(id,me.getId());
         discussPostService.updateStatus(id, POST_STATUS_DELETED);
 
         eventProducer.fireEvent(new Event()
@@ -194,13 +193,11 @@ public class PostController {
         }
     }
 
-    private int currentUserLikeStatus(User me, int entityType, int entityId) {
-        return me == null ? 0 : likeService.findEntityLikeStatus(me.getId(), entityType, entityId);
-    }
 
     private CommentVO buildCommentVo(CommentWithLike commentWithLike, Map<Integer, User> authorMap, User me) {
         UserVO author = UserVO.from(authorMap.get(commentWithLike.comment().getUserId()));
         // 查询该comment下所有reply
+        //TODO: mp起始页可能为1
         PageData<CommentWithLike> pageData = commentService.findCommentsWithLike(ENTITY_TYPE_COMMENT, commentWithLike.comment().getId(), 0, Integer.MAX_VALUE, me == null ? 0 : me.getId());
         // 缓存reply的author和reply的target
         List<Integer> authorReplyIds = pageData.items().stream()

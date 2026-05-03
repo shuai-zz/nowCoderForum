@@ -6,6 +6,7 @@ import com.example.shared.common.utils.RedisKeyUtil;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -118,11 +119,26 @@ public class FollowServiceImpl implements FollowService {
                 .toList();
         Map<Integer, User> userMap = userService.listByIds(ids).stream()
                 .collect(Collectors.toMap(User::getId, user->user));
+        // 批量查询关注时间
+        List<Object> results = redisTemplate.executePipelined((RedisCallback<?>) connection -> {
+            for (Integer id : ids) {
+                connection.zSetCommands().zScore(redisKey.getBytes(), String.valueOf(id).getBytes());
+            }
+            return null;
+        });
+        // 构建ID与score映射
+        Map<Integer, Double> scoreMap = new HashMap<>(ids.size());
+        for (int i = 0; i < ids.size(); i++) {
+            Object o = results.get(i);
+            Double score = (o == null ? null : ((Number) o).doubleValue());
+            scoreMap.put(ids.get(i), score);
+        }
+
+
         return targetIds.stream()
                 .map(id -> {
                     User user = userMap.get((Integer) id);
-                    Double score = redisTemplate.opsForZSet().score(redisKey, id);
-                    Date followTime = Optional.ofNullable(score)
+                    Date followTime = Optional.ofNullable(scoreMap.get(id))
                             .map(s -> new Date(s.longValue()))
                             .orElse(null);
                     return new FollowListItem(user, followTime);
