@@ -1,4 +1,4 @@
-package org.example.nowcoder.infrastructure.captcha;
+package com.example.system.infrastructure.captcha;
 
 /**
  * 验证码校验器接口。校验失败时应抛出 {@link org.example.nowcoder.exception.ValidationException}。

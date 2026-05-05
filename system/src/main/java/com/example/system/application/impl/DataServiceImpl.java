@@ -1,10 +1,8 @@
-package org.example.nowcoder.application.service.impl;
+package com.example.system.application.impl;
 
+import com.example.shared.utils.RedisKeyUtil;
+import com.example.system.application.DataService;
 import lombok.RequiredArgsConstructor;
-import org.example.nowcoder.application.service.DataService;
-import org.example.nowcoder.infrastructure.util.RedisKeyUtil;
-import org.jspecify.annotations.Nullable;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -21,9 +19,8 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("unchecked")
 public class DataServiceImpl implements DataService {
-    private final RedisTemplate redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
 
     //记录UV数据，记录指定IP
@@ -50,7 +47,7 @@ public class DataServiceImpl implements DataService {
         }
         // 合并数据
         String redisKey = RedisKeyUtil.getUvKey(dateFormat.format(start), dateFormat.format(end));
-        redisTemplate.opsForHyperLogLog().union(redisKey, keyList.toArray());
+        redisTemplate.opsForHyperLogLog().union(redisKey, keyList.toArray(new String[0]));
         return redisTemplate.opsForHyperLogLog().size(redisKey);
     }
 
@@ -76,13 +73,12 @@ public class DataServiceImpl implements DataService {
             keyList.add(key.getBytes());
             calendar.add(Calendar.DATE, 1);
         }
-        return (long) redisTemplate.execute(new RedisCallback() {
-            @Override
-            public @Nullable Object doInRedis(RedisConnection connection) throws DataAccessException {
-                String redisKey = RedisKeyUtil.getDauKey(dateFormat.format(start), dateFormat.format(end));
-                connection.bitOp(RedisConnection.BitOperation.OR, redisKey.getBytes(), keyList.toArray(new byte[0][0]));
-                return connection.bitCount(redisKey.getBytes());
-            }
+
+        Long result = redisTemplate.execute((RedisCallback<Long>) connection -> {
+            String redisKey = RedisKeyUtil.getDauKey(dateFormat.format(start), dateFormat.format(end));
+            connection.stringCommands().bitOp(RedisConnection.BitOperation.OR, redisKey.getBytes(), keyList.toArray(new byte[0][0]));
+            return connection.stringCommands().bitCount(redisKey.getBytes());
         });
+        return result != null ? result : 0L;
     }
 }

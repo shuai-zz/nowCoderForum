@@ -1,4 +1,4 @@
-package org.example.nowcoder.infrastructure.captcha;
+package com.example.system.infrastructure.captcha;
 
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;

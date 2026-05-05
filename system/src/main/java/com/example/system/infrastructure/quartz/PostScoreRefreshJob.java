@@ -1,12 +1,12 @@
-package org.example.nowcoder.infrastructure.quartz;
+package com.example.system.infrastructure.quartz;
 
+import com.example.interaction.application.service.LikeService;
+import com.example.post.application.service.DiscussPostService;
+import com.example.post.domain.entity.DiscussPost;
+import com.example.search.application.service.ElasticSearchService;
+import com.example.shared.utils.RedisKeyUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.nowcoder.domain.entity.DiscussPost;
-import org.example.nowcoder.application.service.DiscussPostService;
-import org.example.nowcoder.application.service.ElasticSearchService;
-import org.example.nowcoder.application.service.LikeService;
-import org.example.nowcoder.infrastructure.util.RedisKeyUtil;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -17,7 +17,8 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import static org.example.nowcoder.infrastructure.util.ForumConstant.ENTITY_TYPE_POST;
+import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_POST;
+
 
 /**
  * @author zhaoshuai
@@ -26,7 +27,7 @@ import static org.example.nowcoder.infrastructure.util.ForumConstant.ENTITY_TYPE
 @RequiredArgsConstructor
 @SuppressWarnings("unchecked")
 public class PostScoreRefreshJob implements Job {
-    private final RedisTemplate redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
     private final DiscussPostService discussPostService;
     private final LikeService likeService;
     private final ElasticSearchService elasticSearchService;
@@ -43,7 +44,7 @@ public class PostScoreRefreshJob implements Job {
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
         String redisKey = RedisKeyUtil.getPostScore();
-        BoundSetOperations operations = redisTemplate.boundSetOps(redisKey);
+        BoundSetOperations<String, Object> operations = redisTemplate.boundSetOps(redisKey);
 
         if(operations.size()==0) {
             log.info("[任务取消] 没有需要刷新的帖子");
@@ -56,7 +57,7 @@ public class PostScoreRefreshJob implements Job {
         log.info("[任务结束] 帖子分数刷新完毕");
     }
     private void refresh(int postId) {
-        DiscussPost post = discussPostService.findDiscussPostById(postId);
+        DiscussPost post = discussPostService.findDiscussPostById(postId,0).discussPost();
         if(post==null){
             log.error("该帖子不存在：id={}",postId);
             return;

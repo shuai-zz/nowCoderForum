@@ -1,6 +1,4 @@
-package org.example.nowcoder.application.service;
-
-import org.apache.kafka.common.protocol.types.Field;
+package com.example.system.application;
 
 import java.util.Date;
 

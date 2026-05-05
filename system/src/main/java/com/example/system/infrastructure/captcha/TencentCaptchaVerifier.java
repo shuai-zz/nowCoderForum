@@ -1,4 +1,4 @@
-package org.example.nowcoder.infrastructure.captcha;
+package com.example.system.infrastructure.captcha;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

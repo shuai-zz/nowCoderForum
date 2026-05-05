@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.example.nowcoder.domain.entity.Event;
+import com.example.shared.messaging.Event;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +14,7 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static org.example.nowcoder.infrastructure.util.ForumConstant.*;
+import static com.example.shared.constant.ForumConstant.*;
 
 /**
  * 系统通知事件消费者：处理评论、点赞、关注事件，生成系统通知消息。

@@ -13,7 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.example.nowcoder.domain.entity.Event;
+import com.example.shared.messaging.Event;
 
 import com.example.shared.messaging.EventProducer;
 import com.example.interaction.interfaces.vo.FollowUserVO;

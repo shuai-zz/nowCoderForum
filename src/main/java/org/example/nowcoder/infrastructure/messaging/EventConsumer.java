@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.example.nowcoder.domain.entity.DiscussPost;
-import org.example.nowcoder.domain.entity.Event;
+import com.example.shared.messaging.Event;
 import org.example.nowcoder.domain.entity.Message;
 import org.example.nowcoder.application.service.DiscussPostService;
 import org.example.nowcoder.application.service.ElasticSearchService;

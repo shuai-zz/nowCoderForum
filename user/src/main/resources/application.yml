@@ -1,3 +1,6 @@
 spring:
   application:
     name: user
+
+mybatis-plus:
+  type-aliases-package: com.example.user.domain

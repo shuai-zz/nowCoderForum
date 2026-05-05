@@ -1,4 +1,4 @@
-package org.example.nowcoder.infrastructure.captcha;
+package com.example.system.infrastructure.captcha;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

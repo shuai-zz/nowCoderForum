@@ -3,10 +3,10 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.6</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <groupId>com.example</groupId>
+        <artifactId>nowcoder-parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <groupId>com.example</groupId>
     <artifactId>system</artifactId>
@@ -40,6 +40,97 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Web: @RestController / RestClient / @RequestMapping (DataController, TencentCaptchaVerifier) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Security: 与其它 Web 模块保持一致 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Redis: KaptchaVerifier / PostScoreRefreshJob 用 RedisTemplate -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Quartz: PostScoreRefreshJob / QuartzConfig -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-quartz</artifactId>
+        </dependency>
+
+        <!-- StringUtils 等工具 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+
+        <!-- Kaptcha 图形验证码生成 -->
+        <dependency>
+            <groupId>com.github.penggle</groupId>
+            <artifactId>kaptcha</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>annotationProcessor</scope>
+        </dependency>
+
+        <!-- 测试 Security -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- API 文档 -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations-jakarta</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- ============ 内部模块 ============ -->
+        <!-- shared: Result / ForumConstant / RedisKeyUtil / ValidationException -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>shared</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- post: DiscussPost / DiscussPostService(被 PostScoreRefreshJob 调用) -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>post</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- interaction: LikeService(被 PostScoreRefreshJob 调用) -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>interaction</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- search: ElasticSearchService(被 PostScoreRefreshJob 调用) -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>search</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

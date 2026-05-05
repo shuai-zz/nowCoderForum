@@ -1,4 +1,4 @@
-package org.example.nowcoder.infrastructure.captcha;
+package com.example.system.infrastructure.captcha;
 
 /**
  * 验证码校验上下文。各字段按实现的需要使用：

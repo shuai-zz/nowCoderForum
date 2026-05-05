@@ -1,8 +1,4 @@
-package org.example.nowcoder.domain.entity;
-
-
-import lombok.Data;
-import org.apache.kafka.common.protocol.types.Field;
+package com.example.shared.messaging;
 
 import java.util.HashMap;
 import java.util.Map;

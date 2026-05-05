@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 import com.example.post.interfaces.vo.PostDetailVO;
 import com.example.post.interfaces.vo.PostListItemVO;
-import org.example.nowcoder.domain.entity.Event;
+import com.example.shared.messaging.Event;
 import com.example.shared.messaging.EventProducer;
 import com.example.post.interfaces.vo.ReplyVO;
 import org.springframework.data.redis.core.RedisTemplate;

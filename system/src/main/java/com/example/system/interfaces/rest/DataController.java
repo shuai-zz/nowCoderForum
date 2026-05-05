@@ -1,10 +1,10 @@
-package org.example.nowcoder.interfaces.rest;
+package com.example.system.interfaces.rest;
 
+import com.example.shared.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.example.nowcoder.application.service.DataService;
-import org.example.nowcoder.interfaces.common.Result;
+import com.example.system.application.DataService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +15,9 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
 
+/**
+ * @author zhaoshuai
+ */
 @Tag(name = "Admin Stats", description = "管理端：UV / DAU 统计")
 @RestController
 @RequestMapping("/api/v1/admin/stats")

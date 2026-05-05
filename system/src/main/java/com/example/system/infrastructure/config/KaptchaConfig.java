@@ -1,4 +1,4 @@
-package org.example.nowcoder.infrastructure.config;
+package com.example.system.infrastructure.config;
 
 import com.google.code.kaptcha.Producer;
 import com.google.code.kaptcha.impl.DefaultKaptcha;

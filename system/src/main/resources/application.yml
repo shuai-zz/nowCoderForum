@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: system
+
+  # Quartz 定时任务
+  quartz:
+    job-store-type: memory
+    scheduler-name: communityScheduler
+
+  # Redis：验证码缓存 + 帖子分数刷新任务 (post:score set) + UV/DAU 统计
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+
+# 验证码配置：kaptcha(默认本地图形验证码) / tencent(腾讯云行为验证码)
+nowcoder-captcha:
+  provider: ${CAPTCHA_PROVIDER:kaptcha}
+  tencent:
+    secret-id: ${TENCENT_SECRET_ID:}
+    secret-key: ${TENCENT_SECRET_KEY:}
+    captcha-app-id: ${TENCENT_CAPTCHA_APP_ID:0}
+    app-secret-key: ${TENCENT_CAPTCHA_APP_SECRET_KEY:}

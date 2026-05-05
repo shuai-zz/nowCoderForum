@@ -1,6 +1,6 @@
-package org.example.nowcoder.infrastructure.config;
+package com.example.system.infrastructure.config;
 
-import org.example.nowcoder.infrastructure.quartz.PostScoreRefreshJob;
+import com.example.system.infrastructure.quartz.PostScoreRefreshJob;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.springframework.context.annotation.Bean;
