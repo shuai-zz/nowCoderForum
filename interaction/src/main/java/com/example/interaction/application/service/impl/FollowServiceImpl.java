@@ -2,7 +2,7 @@ package com.example.interaction.application.service.impl;
 
 import com.example.interaction.application.dto.FollowListItem;
 import com.example.interaction.application.service.FollowService;
-import com.example.shared.common.utils.RedisKeyUtil;
+import com.example.shared.utils.RedisKeyUtil;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.example.shared.common.constant.ForumConstant.ENTITY_TYPE_USER;
+import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_USER;
 
 /**
  * @author zhaoshuai

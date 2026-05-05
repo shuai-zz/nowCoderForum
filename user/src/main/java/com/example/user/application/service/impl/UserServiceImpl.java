@@ -2,10 +2,10 @@ package com.example.user.application.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.example.shared.common.exception.AuthException;
-import com.example.shared.common.exception.ValidationException;
-import com.example.shared.common.utils.ForumUtil;
-import com.example.shared.common.utils.RedisKeyUtil;
+import com.example.shared.exception.AuthException;
+import com.example.shared.exception.ValidationException;
+import com.example.shared.utils.ForumUtil;
+import com.example.shared.utils.RedisKeyUtil;
 import com.example.user.application.dto.LoginResult;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.LoginTicket;
@@ -26,8 +26,6 @@ import org.springframework.stereotype.Service;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-
-import static com.example.shared.common.constant.ForumConstant.*;
 
 
 /**

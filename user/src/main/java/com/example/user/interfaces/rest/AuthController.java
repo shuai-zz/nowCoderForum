@@ -1,9 +1,9 @@
 package com.example.user.interfaces.rest;
 
-import com.example.shared.common.exception.ValidationException;
-import com.example.shared.common.result.Result;
-import com.example.shared.common.utils.ForumUtil;
-import com.example.shared.common.utils.RedisKeyUtil;
+import com.example.shared.exception.ValidationException;
+import com.example.shared.result.Result;
+import com.example.shared.utils.ForumUtil;
+import com.example.shared.utils.RedisKeyUtil;
 import com.example.user.infrastructure.utils.SecurityUtil;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
@@ -32,8 +32,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.TimeUnit;
-
-import static com.example.shared.common.constant.ForumConstant.*;
 
 
 /**

@@ -9,9 +9,9 @@ import com.example.interaction.application.service.LikeService;
 import com.example.interaction.domain.entity.Comment;
 import com.example.interaction.infrastructure.mapper.CommentMapper;
 import com.example.post.application.service.DiscussPostService;
-import com.example.shared.common.constant.ForumConstant;
-import com.example.shared.common.result.PageData;
-import com.example.shared.common.utils.SensitiveFilter;
+import com.example.shared.constant.ForumConstant;
+import com.example.shared.result.PageData;
+import com.example.shared.utils.SensitiveFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -22,7 +22,7 @@ import org.springframework.web.util.HtmlUtils;
 import java.util.List;
 import java.util.Map;
 
-import static com.example.shared.common.constant.ForumConstant.ENTITY_TYPE_COMMENT;
+import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_COMMENT;
 
 /**
  * @author zhaoshuai

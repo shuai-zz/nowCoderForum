@@ -7,8 +7,8 @@ import com.example.post.application.dto.PostItem;
 import com.example.post.application.service.DiscussPostService;
 import com.example.post.domain.entity.DiscussPost;
 import com.example.post.infrastructure.mapper.DiscussPostMapper;
-import com.example.shared.common.result.PageData;
-import com.example.shared.common.utils.SensitiveFilter;
+import com.example.shared.result.PageData;
+import com.example.shared.utils.SensitiveFilter;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.example.shared.common.constant.ForumConstant.ENTITY_TYPE_POST;
+import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_POST;
 
 /**
  * @author 23211

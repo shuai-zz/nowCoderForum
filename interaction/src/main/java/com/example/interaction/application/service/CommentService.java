@@ -1,10 +1,9 @@
 package com.example.interaction.application.service;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.interaction.application.dto.CommentWithLike;
 import com.example.interaction.domain.entity.Comment;
-import com.example.shared.common.result.PageData;
+import com.example.shared.result.PageData;
 
 /**
  * @author zhaoshuai

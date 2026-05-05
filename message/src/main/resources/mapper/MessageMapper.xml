@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.message.infrastructure.mapper.MessageMapper">
+    <select id="selectConversations" resultType="com.example.message.domain.entity.Message">
+        select *
+        from message
+        where id in (
+            /*** 会话中最新消息的id ***/
+            select max(id)
+            from message
+            where status != 2
+              and from_id != 1
+              and (from_id = #{userId} or to_id = #{userId})
+            group by conversation_id)
+        order by create_time
+            desc
+
+    </select>
+    <select id="selectConversationCount" resultType="java.lang.Integer" parameterType="int">
+        select COUNT(DISTINCT conversation_id)
+        from message
+        where status != 2
+            /*** system notice ***/
+          and from_id != 1
+          and (from_id = #{userId} or to_id = #{userId})
+    </select>
+    <select id="selectUnreadCount" resultType="java.lang.Integer">
+        select count(*)
+        from message
+        where status=0
+        and from_id!=1
+        and to_id=#{userId}
+        <if test="conversationId!=null">
+            and conversation_id= #{conversationId}
+        </if>
+
+    </select>
+
+    <update id="updateStatus">
+        update message
+        set status=#{status}
+        where id in
+        <foreach item="id" collection="ids" separator="," close=")" open="(" index="">
+            #{id}
+        </foreach>
+    </update>
+
+
+    <select id="selectLatestNotice" resultType="com.example.message.domain.entity.Message">
+        select *
+        from message
+        where id in (
+            /*** 最新通知 ***/
+            select max(id)
+            from message
+            where status != 2
+              and from_id = 1
+              and to_id = #{userId}
+              and conversation_id = #{topic})
+    </select>
+    <select id="selectNoticeUnreadCount" resultType="java.lang.Integer">
+        select count(*) from message
+        where status=0
+        and from_id=1
+        and to_id= #{userId}
+        <if test="topic!=null">
+            and conversation_id= #{topic}
+        </if>
+    </select>
+    <select id="selectDmCounts" resultType="java.util.Map">
+        select conversation_id as conversationId, count(*) as cnt
+        from message
+        where status!=2
+        and from_id!=1
+        and conversation_id in
+        <foreach item="id" collection="conversationIds" separator="," close=")" open="(" index="">
+            #{id}
+        </foreach>
+        group by conversation_id
+    </select>
+    <select id="selectUnreadDmCounts" resultType="java.util.HashMap">
+        select conversation_id as conversationId, count(*) as cnt
+        from message
+        where status=0
+        and from_id!=1
+        and to_id= #{currUserid}
+        and conversation_id in
+        <foreach item="id" collection="conversationIds" separator="," close=")" open="(" index="">
+            #{id}
+        </foreach>
+        group by conversation_id
+    </select>
+
+</mapper>

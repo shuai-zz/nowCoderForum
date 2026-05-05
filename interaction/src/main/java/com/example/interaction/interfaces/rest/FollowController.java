@@ -3,9 +3,9 @@ package com.example.interaction.interfaces.rest;
 import com.example.interaction.application.dto.FollowListItem;
 import com.example.interaction.application.service.FollowService;
 import com.example.interaction.interfaces.dto.FollowRequest;
-import com.example.shared.common.exception.ResourceNotFoundException;
-import com.example.shared.common.result.PageResult;
-import com.example.shared.common.result.Result;
+import com.example.shared.exception.ResourceNotFoundException;
+import com.example.shared.result.PageResult;
+import com.example.shared.result.Result;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
 import com.example.user.interfaces.vo.UserVO;
@@ -15,7 +15,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.nowcoder.domain.entity.Event;
 
-import org.example.nowcoder.infrastructure.messaging.EventProducer;
+import com.example.shared.messaging.EventProducer;
 import com.example.interaction.interfaces.vo.FollowUserVO;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,8 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.*;
 
-import static com.example.shared.common.constant.ForumConstant.ENTITY_TYPE_USER;
-import static com.example.shared.common.constant.ForumConstant.TOPIC_FOLLOW;
+import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_USER;
+import static com.example.shared.constant.ForumConstant.TOPIC_FOLLOW;
 
 
 /**

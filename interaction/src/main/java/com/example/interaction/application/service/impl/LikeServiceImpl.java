@@ -1,7 +1,7 @@
 package com.example.interaction.application.service.impl;
 
 import com.example.interaction.application.service.LikeService;
-import com.example.shared.common.utils.RedisKeyUtil;
+import com.example.shared.utils.RedisKeyUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;

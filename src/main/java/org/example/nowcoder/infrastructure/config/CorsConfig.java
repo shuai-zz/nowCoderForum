@@ -17,6 +17,7 @@ import java.util.List;
 
 /**
  * CORS 配置。先于 Spring Security 链处理 preflight。
+ * @author zhaoshuai
  */
 @Configuration
 public class CorsConfig {

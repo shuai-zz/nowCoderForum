@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.interaction.domain.entity.Comment;
-import com.example.shared.common.result.PageData;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;

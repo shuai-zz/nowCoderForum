@@ -126,7 +126,8 @@ org.example.nowcoder/
 │   ├── domain/
 │   └── infrastructure/
 │
-├── message/                   ← 消息模块（私信、系统通知）
+├── message/                   ← 消息模块（私信
+、系统通知）
 │   ├── interfaces/
 │   ├── application/
 │   ├── domain/
