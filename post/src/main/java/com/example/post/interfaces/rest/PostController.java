@@ -24,7 +24,7 @@ import com.example.post.interfaces.vo.PostDetailVO;
 import com.example.post.interfaces.vo.PostListItemVO;
 import org.example.nowcoder.domain.entity.Event;
 import com.example.shared.messaging.EventProducer;
-import org.example.nowcoder.interfaces.vo.ReplyVO;
+import com.example.post.interfaces.vo.ReplyVO;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +33,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static com.example.shared.constant.ForumConstant.*;
 
 
 /**

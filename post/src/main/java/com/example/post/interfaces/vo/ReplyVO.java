@@ -1,4 +1,4 @@
-package org.example.nowcoder.interfaces.vo;
+package com.example.post.interfaces.vo;
 
 
 import com.example.interaction.domain.entity.Comment;

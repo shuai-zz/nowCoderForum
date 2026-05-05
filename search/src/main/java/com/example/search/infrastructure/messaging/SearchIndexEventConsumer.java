@@ -1,23 +1,26 @@
-package org.example.nowcoder.infrastructure.messaging;
+package com.example.search.infrastructure.messaging;
 
+import com.example.post.application.service.DiscussPostService;
+import com.example.post.domain.entity.DiscussPost;
+import com.example.search.application.service.ElasticSearchService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.example.nowcoder.application.service.DiscussPostService;
-import org.example.nowcoder.application.service.ElasticSearchService;
-import org.example.nowcoder.domain.entity.DiscussPost;
 import org.example.nowcoder.domain.entity.Event;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-import static org.example.nowcoder.infrastructure.util.ForumConstant.*;
+import static com.example.shared.constant.ForumConstant.TOPIC_DELETE;
+import static com.example.shared.constant.ForumConstant.TOPIC_PUBLISH;
+
 
 /**
  * 搜索索引事件消费者：处理帖子发布/删除事件，同步 Elasticsearch 索引。
  * 归属 search 模块（待实体迁移后迁入）。
+ * @author zhaoshuai
  */
 @Component
 @Slf4j
@@ -31,8 +34,10 @@ public class SearchIndexEventConsumer {
     @KafkaListener(topics = {TOPIC_PUBLISH})
     public void handlePublish(ConsumerRecord<String, String> record) {
         Event event = parseEvent(record);
-        if (event == null) return;
-        DiscussPost post = discussPostService.findDiscussPostById(event.getEntityId());
+        if (event == null) {
+            return;
+        }
+        DiscussPost post = discussPostService.findDiscussPostById(event.getEntityId(), 0).discussPost();
         if (post != null) {
             elasticSearchService.saveDiscussPost(post);
         }
@@ -41,7 +46,9 @@ public class SearchIndexEventConsumer {
     @KafkaListener(topics = {TOPIC_DELETE})
     public void handleDelete(ConsumerRecord<String, String> record) {
         Event event = parseEvent(record);
-        if (event == null) return;
+        if (event == null) {
+            return;
+        }
         elasticSearchService.deleteDiscussPost(event.getEntityId());
     }
 
