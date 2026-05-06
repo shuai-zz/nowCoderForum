@@ -25,6 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Date;
 
+import static com.example.shared.constant.ForumConstant.*;
+
 
 /**
  * @author zhaoshuai

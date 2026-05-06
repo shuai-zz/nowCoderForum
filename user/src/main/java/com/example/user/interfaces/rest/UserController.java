@@ -1,13 +1,13 @@
 package com.example.user.interfaces.rest;
 
-import com.example.interaction.application.service.FollowService;
-import com.example.interaction.application.service.LikeService;
 import com.example.shared.exception.ResourceNotFoundException;
 import com.example.shared.exception.ValidationException;
 import com.example.shared.result.Result;
 import com.example.shared.utils.ForumUtil;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
+import com.example.user.domain.entity.UserStatistics;
+import com.example.user.infrastructure.mapper.UserStatisticsMapper;
 import com.example.user.infrastructure.utils.SecurityUtil;
 import com.example.user.interfaces.vo.UserProfileVO;
 import com.example.user.interfaces.vo.UserVO;
@@ -49,8 +49,7 @@ public class UserController {
     private static final Set<String> SUPPORTED_AVATAR_EXT = Set.of(".jpg", ".jpeg", ".png");
 
     private final UserService userService;
-    private final LikeService likeService;
-    private final FollowService followService;
+    private final UserStatisticsMapper userStatisticsMapper;
 
 
     @Value("${nowcoder.path.upload}")
@@ -59,21 +58,20 @@ public class UserController {
     @Value("${nowcoder.path.domain}")
     private String domain;
 
-    @Operation(summary = "用户主页：基础信息 + 计数 + hasFollowed")
+    @Operation(summary = "用户主页：基础信息 + 计数")
     @GetMapping("/{id}")
     public Result<UserProfileVO> profile(@PathVariable int id) {
         User user = userService.getById(id);
         if (user == null) {
             throw new ResourceNotFoundException("User not found: " + id);
         }
-        long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_USER, id);
-        long followeeCount = followService.findFolloweeCount(id, ENTITY_TYPE_USER);
-        long followerCount = followService.findFollowerCount(ENTITY_TYPE_USER, id);
-        User me = SecurityUtil.getCurrentUser();
-        boolean hasFollowed = me != null && followService.hasFollowed(me.getId(), ENTITY_TYPE_USER, id);
+        UserStatistics stats = userStatisticsMapper.selectById(id);
+        long likeCount = stats == null ? 0 : stats.getReceivedLikeCount();
+        long followeeCount = stats == null ? 0 : stats.getFolloweeCount();
+        long followerCount = stats == null ? 0 : stats.getFollowerCount();
 
         return Result.ok(new UserProfileVO(
-                UserVO.from(user), likeCount, followeeCount, followerCount, hasFollowed));
+                UserVO.from(user), likeCount, followeeCount, followerCount));
     }
 
     @Operation(summary = "上传当前用户头像，返回头像 URL")

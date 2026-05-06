@@ -17,21 +17,19 @@ public record PostDetailVO(
         String content,
         UserVO author,
         long likeCount,
-        int likeStatus,
         int commentCount,
         int type,
         int status,
         Date createTime,
         double score
 ) {
-    public static PostDetailVO of(DiscussPost post, UserVO author, long likeCount, int likeStatus) {
+    public static PostDetailVO of(DiscussPost post, UserVO author, long likeCount) {
         return new PostDetailVO(
                 post.getId(),
                 post.getTitle(),
                 post.getContent(),
                 author,
                 likeCount,
-                likeStatus,
                 post.getCommentCount(),
                 post.getType(),
                 post.getStatus(),

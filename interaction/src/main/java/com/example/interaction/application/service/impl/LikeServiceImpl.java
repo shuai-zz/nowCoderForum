@@ -1,8 +1,11 @@
 package com.example.interaction.application.service.impl;
 
 import com.example.interaction.application.service.LikeService;
+import com.example.shared.event.EntityLikedEvent;
+import com.example.shared.event.EntityUnlikedEvent;
 import com.example.shared.utils.RedisKeyUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -24,6 +27,7 @@ import java.util.stream.Collectors;
 public class LikeServiceImpl implements LikeService {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 原子性点赞/取消点赞 Lua 脚本。
@@ -48,15 +52,22 @@ public class LikeServiceImpl implements LikeService {
             new DefaultRedisScript<>(LIKE_TOGGLE_LUA, Long.class);
 
     @Override
-    public void like(int userId, int entityType, int entityId, int entityUserId) {
+    public int like(int userId, int entityType, int entityId, int entityUserId) {
         String entityLikeKey = RedisKeyUtil.getEntityLikeKey(entityType, entityId);
         String userLikeKey = RedisKeyUtil.getUserLikeKey(entityUserId);
 
-        redisTemplate.execute(
+        Long result = redisTemplate.execute(
                 LIKE_SCRIPT,
                 List.of(entityLikeKey, userLikeKey),
                 String.valueOf(userId)
         );
+        int likeStatus = result != null ? result.intValue() : 0;
+        if (likeStatus == 1) {
+            eventPublisher.publishEvent(new EntityLikedEvent(userId, entityType, entityId, entityUserId));
+        } else {
+            eventPublisher.publishEvent(new EntityUnlikedEvent(userId, entityType, entityId, entityUserId));
+        }
+        return likeStatus;
     }
 
     @Override

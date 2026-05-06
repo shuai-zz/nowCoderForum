@@ -81,15 +81,15 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         if(comments.isEmpty()){
             return new PageData<>(List.of(), 0);
         }
-        // 批量查询评论的点赞数和点赞状态
+        // likeCount 直接来自评论本地字段（CommentLikeEventListener 维护，与 post 对称）
+        // likeStatus 是当前用户的交互状态，仍需走 Redis 批量查询
         List<Integer> commentIds = comments.stream()
                 .map(Comment::getId)
                 .toList();
-        Map<Integer, Long> likeCountMap = likeService.findEntityLikeCounts(ENTITY_TYPE_COMMENT, commentIds);
         Map<Integer, Integer> likeStatusMap = likeService.findEntityLikeStatuses(currentUserId, ENTITY_TYPE_COMMENT, commentIds);
 
         List<CommentWithLike> list = comments.stream()
-                .map(comment -> CommentWithLike.of(comment, likeCountMap.get(comment.getId()), likeStatusMap.get(comment.getId())))
+                .map(comment -> CommentWithLike.of(comment, comment.getLikeCount(), likeStatusMap.get(comment.getId())))
                 .toList();
 
         return new PageData<>(list, page.getTotal());

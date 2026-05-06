@@ -3,9 +3,9 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="org.example.nowcoder.mapper.DiscussPostMapper">
+<mapper namespace="com.example.post.infrastructure.mapper.DiscussPostMapper">
 
-    <select id="selectDiscussPosts" resultType="org.example.nowcoder.entity.DiscussPost">
+    <select id="selectDiscussPosts" resultType="com.example.post.domain.entity.DiscussPost">
         select * from discuss_post
         <where>
             status!=2

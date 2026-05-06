@@ -10,7 +10,9 @@ import com.example.user.application.dto.LoginResult;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.LoginTicket;
 import com.example.user.domain.User;
+import com.example.user.domain.entity.UserStatistics;
 import com.example.user.infrastructure.mapper.UserMapper;
+import com.example.user.infrastructure.mapper.UserStatisticsMapper;
 import com.example.user.infrastructure.utils.MailClient;
 import lombok.NonNull;
 import org.apache.commons.lang3.StringUtils;
@@ -22,10 +24,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+
+import static com.example.shared.constant.ForumConstant.*;
 
 
 /**
@@ -37,10 +42,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     private final MailClient mailClient;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final UserStatisticsMapper userStatisticsMapper;
 
-    public UserServiceImpl(MailClient mailClient, RedisTemplate<String, Object> redisTemplate) {
+    public UserServiceImpl(MailClient mailClient,
+                           RedisTemplate<String, Object> redisTemplate,
+                           UserStatisticsMapper userStatisticsMapper) {
         this.mailClient = mailClient;
         this.redisTemplate = redisTemplate;
+        this.userStatisticsMapper = userStatisticsMapper;
     }
 
     @Value("${nowcoder.path.frontend}")
@@ -58,6 +67,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
 
     @Override
+    @Transactional
     public void register(User user) {
         if (user == null) {
             throw new IllegalArgumentException("Parameter cannot be null");
@@ -94,6 +104,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         user.setAvatarUrl(String.format("https://images.nowcoder.com/head/%dt.png", new Random().nextInt(1000)));
         user.setCreateTime(new Date());
         baseMapper.insert(user);
+
+        // 同步初始化统计读模型行：保证后续 EntityLikedEvent / FollowEvent
+        // 触发的 UPDATE...WHERE user_id=? 一定能命中已有行。
+        UserStatistics stats = new UserStatistics();
+        stats.setUserId(user.getId());
+        userStatisticsMapper.insert(stats);
 
         String url = frontendDomain + "/activate/" + user.getId() + "/" + user.getActivationCode();
         String content = """

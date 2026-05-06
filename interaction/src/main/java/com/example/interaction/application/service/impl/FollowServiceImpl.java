@@ -2,10 +2,13 @@ package com.example.interaction.application.service.impl;
 
 import com.example.interaction.application.dto.FollowListItem;
 import com.example.interaction.application.service.FollowService;
+import com.example.shared.event.FollowEvent;
+import com.example.shared.event.UnfollowEvent;
 import com.example.shared.utils.RedisKeyUtil;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -25,6 +28,7 @@ public class FollowServiceImpl implements FollowService {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final UserService userService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 关注 Lua 脚本：原子执行 zadd(followee) + zadd(follower)
@@ -54,35 +58,23 @@ public class FollowServiceImpl implements FollowService {
             new DefaultRedisScript<>(UNFOLLOW_LUA, Long.class);
 
     @Override
-    public void follow(int userId, int entityType, int entityId) {
+    public void follow(int userId, int entityType, int entityId, int entityUserId) {
         String followeeKey = RedisKeyUtil.getFolloweeKey(userId, entityType);
         String followerKey = RedisKeyUtil.getFollowerKey(entityType, entityId);
         redisTemplate.execute(FOLLOW_SCRIPT,
                 List.of(followeeKey, followerKey),
                 String.valueOf(entityId), String.valueOf(userId), String.valueOf(System.currentTimeMillis()));
+        eventPublisher.publishEvent(new FollowEvent(userId, entityType, entityId, entityUserId));
     }
 
     @Override
-    public void unfollow(int userId, int entityType, int entityId) {
+    public void unfollow(int userId, int entityType, int entityId, int entityUserId) {
         String followeeKey = RedisKeyUtil.getFolloweeKey(userId, entityType);
         String followerKey = RedisKeyUtil.getFollowerKey(entityType, entityId);
         redisTemplate.execute(UNFOLLOW_SCRIPT,
                 List.of(followeeKey, followerKey),
                 String.valueOf(entityId), String.valueOf(userId));
-    }
-
-    @Override
-    public long findFolloweeCount(int userId, int entityType) {
-        String followeeKey = RedisKeyUtil.getFolloweeKey(userId, entityType);
-        Long count = redisTemplate.opsForZSet().zCard(followeeKey);
-        return count == null ? 0 : count;
-    }
-
-    @Override
-    public long findFollowerCount(int entityType, int entityId) {
-        String followerKey = RedisKeyUtil.getFollowerKey(entityType, entityId);
-        Long count = redisTemplate.opsForZSet().zCard(followerKey);
-        return count == null ? 0 : count;
+        eventPublisher.publishEvent(new UnfollowEvent(userId, entityType, entityId, entityUserId));
     }
 
     @Override

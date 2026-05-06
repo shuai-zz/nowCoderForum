@@ -1,9 +1,11 @@
 package com.example.system.infrastructure.captcha;
 
+import com.example.shared.captcha.CaptchaContext;
+import com.example.shared.captcha.CaptchaVerifier;
+import com.example.shared.exception.ValidationException;
+import com.example.shared.utils.RedisKeyUtil;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.example.nowcoder.exception.ValidationException;
-import org.example.nowcoder.infrastructure.util.RedisKeyUtil;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;

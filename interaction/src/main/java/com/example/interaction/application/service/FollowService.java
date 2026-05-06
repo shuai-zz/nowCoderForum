@@ -10,10 +10,8 @@ import java.util.Map;
  * @author zhaoshuai
  */
 public interface FollowService {
-    void follow(int userId, int entityType, int entityId);
-    void unfollow(int userId, int entityType, int entityId);
-    long findFolloweeCount(int userId, int entityType);
-    long findFollowerCount(int entityType, int entityId);
+    void follow(int userId, int entityType, int entityId, int entityUserId);
+    void unfollow(int userId, int entityType, int entityId, int entityUserId);
     boolean hasFollowed(int userId, int entityType, int entityId);
     List<FollowListItem> findFollowees(int userId, int pageNum, int pageSize);
     List<FollowListItem> findFollowers(int userId, int pageNum, int pageSize);

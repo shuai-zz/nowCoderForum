@@ -10,14 +10,14 @@ import com.example.user.domain.User;
 import com.example.user.interfaces.dto.LoginRequest;
 import com.example.user.interfaces.dto.RegisterRequest;
 import com.example.user.interfaces.vo.UserVO;
+import com.example.shared.captcha.CaptchaContext;
+import com.example.shared.captcha.CaptchaVerifier;
 import com.google.code.kaptcha.Producer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import org.example.nowcoder.infrastructure.captcha.CaptchaContext;
-import org.example.nowcoder.infrastructure.captcha.CaptchaVerifier;
 import com.example.user.interfaces.vo.LoginVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +26,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import static com.example.shared.constant.ForumConstant.*;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;

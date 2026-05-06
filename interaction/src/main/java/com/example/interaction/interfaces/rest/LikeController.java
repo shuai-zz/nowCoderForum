@@ -41,12 +41,10 @@ public class LikeController {
     @PostMapping
     public Result<LikeStatusVO> toggle(@AuthenticationPrincipal User me, @Valid @RequestBody LikeRequest req) {
 
-        likeService.like(me.getId(), req.entityType(), req.entityId(), req.entityUserId());
-
+        int likeStatus = likeService.like(me.getId(), req.entityType(), req.entityId(), req.entityUserId());
         long likeCount = likeService.findEntityLikeCount(req.entityType(), req.entityId());
-        int likeStatus = likeService.findEntityLikeStatus(me.getId(), req.entityType(), req.entityId());
 
-        // 仅在"新增点赞"时发通知
+        // 仅在"新增点赞"时发 Kafka 通知
         if (likeStatus == 1) {
             eventProducer.fireEvent(new Event()
                     .setTopic(TOPIC_LIKE)

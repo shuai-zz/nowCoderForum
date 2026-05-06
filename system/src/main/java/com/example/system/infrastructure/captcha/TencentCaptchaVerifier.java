@@ -1,11 +1,13 @@
 package com.example.system.infrastructure.captcha;
 
+import com.example.shared.captcha.CaptchaContext;
+import com.example.shared.captcha.CaptchaVerifier;
+import com.example.shared.exception.ValidationException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.example.nowcoder.exception.ValidationException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;

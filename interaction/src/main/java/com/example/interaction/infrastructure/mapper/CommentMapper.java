@@ -20,4 +20,10 @@ public interface CommentMapper extends BaseMapper<Comment> {
                 .eq(Comment::getEntityId, entityId)
                 .orderByDesc(Comment::getCreateTime));
     }
+
+    default int incrementLikeCount(int id, int delta) {
+        return update(null, Wrappers.<Comment>lambdaUpdate()
+                .setSql("like_count = like_count + {0}", delta)
+                .eq(Comment::getId, id));
+    }
 }

@@ -30,6 +30,9 @@ public class Comment {
 
     private String content;
 
+    /** 点赞数：事件驱动维护，由 CommentLikeEventListener 监听 EntityLikedEvent 后增减。 */
+    private int likeCount;
+
     private int status;
 
     private Date createTime;

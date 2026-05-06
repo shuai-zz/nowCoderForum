@@ -8,6 +8,8 @@ import com.example.shared.result.PageResult;
 import com.example.shared.result.Result;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
+import com.example.user.domain.entity.UserStatistics;
+import com.example.user.infrastructure.mapper.UserStatisticsMapper;
 import com.example.user.interfaces.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,26 +44,29 @@ public class FollowController {
 
     private final FollowService followService;
     private final UserService userService;
+    private final UserStatisticsMapper userStatisticsMapper;
     private final EventProducer eventProducer;
 
     @Operation(summary = "关注")
     @PostMapping("/api/v1/follows")
     public Result<Void> follow(@AuthenticationPrincipal User me, @Valid @RequestBody FollowRequest req) {
-        followService.follow(me.getId(), req.entityType(), req.entityId());
+        int entityUserId = req.entityType() == ENTITY_TYPE_USER ? req.entityId() : 0;
+        followService.follow(me.getId(), req.entityType(), req.entityId(), entityUserId);
 
         eventProducer.fireEvent(new Event()
                 .setTopic(TOPIC_FOLLOW)
                 .setUserId(me.getId())
                 .setEntityType(req.entityType())
                 .setEntityId(req.entityId())
-                .setEntityUserId(req.entityId()));
+                .setEntityUserId(entityUserId));
         return Result.ok();
     }
 
     @Operation(summary = "取消关注")
     @DeleteMapping("/api/v1/follows/{entityType}/{entityId}")
     public Result<Void> unfollow(@AuthenticationPrincipal User me, @PathVariable int entityType, @PathVariable int entityId) {
-        followService.unfollow(me.getId(), entityType, entityId);
+        int entityUserId = entityType == ENTITY_TYPE_USER ? entityId : 0;
+        followService.unfollow(me.getId(), entityType, entityId, entityUserId);
         return Result.ok();
     }
 
@@ -75,7 +80,7 @@ public class FollowController {
     ) {
         requireUserExists(userId);
 
-        long total = followService.findFolloweeCount(userId, ENTITY_TYPE_USER);
+        long total = readFolloweeCount(userId);
         List<FollowListItem> raw = followService.findFollowees(userId, pageNum, pageSize);
         List<FollowUserVO> items = toFollowUserVOList(me, raw);
 
@@ -92,7 +97,7 @@ public class FollowController {
     ) {
         requireUserExists(userId);
 
-        long total = followService.findFollowerCount(ENTITY_TYPE_USER, userId);
+        long total = readFollowerCount(userId);
         List<FollowListItem> raw = followService.findFollowers(userId, pageNum, pageSize);
         List<FollowUserVO> items = toFollowUserVOList(me,raw);
 
@@ -100,6 +105,21 @@ public class FollowController {
     }
 
     // ---- helpers ----
+
+    /**
+     * 关注/粉丝总数统一从 user_statistics 读模型读取，
+     * 与 UserController.profile 保持单一数据源（事件最终一致）。
+     * 列表分页仍走 Redis ZSet（按时间排序）。
+     */
+    private long readFolloweeCount(int userId) {
+        UserStatistics stats = userStatisticsMapper.selectById(userId);
+        return stats == null ? 0L : stats.getFolloweeCount();
+    }
+
+    private long readFollowerCount(int userId) {
+        UserStatistics stats = userStatisticsMapper.selectById(userId);
+        return stats == null ? 0L : stats.getFollowerCount();
+    }
 
     private void requireUserExists(int userId) {
         if (userService.getById(userId) == null) {

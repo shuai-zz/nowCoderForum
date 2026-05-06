@@ -1,5 +1,7 @@
 package com.example.message.infrastructure.messaging;
 
+import com.example.message.application.service.MessageService;
+import com.example.message.domain.entity.Message;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

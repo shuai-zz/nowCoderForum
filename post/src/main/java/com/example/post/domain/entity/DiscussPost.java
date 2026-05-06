@@ -40,6 +40,8 @@ public class DiscussPost {
     private Date createTime;
     @Field(type=FieldType.Integer)
     private int commentCount;
+    @Field(type=FieldType.Integer)
+    private int likeCount;
     @Field(type=FieldType.Double)
     private double score;
 
@@ -107,6 +109,14 @@ public class DiscussPost {
         this.commentCount = commentCount;
     }
 
+    public int getLikeCount() {
+        return likeCount;
+    }
+
+    public void setLikeCount(int likeCount) {
+        this.likeCount = likeCount;
+    }
+
     public double getScore() {
         return score;
     }
@@ -126,6 +136,7 @@ public class DiscussPost {
                 ", status=" + status +
                 ", createTime=" + createTime +
                 ", commentCount=" + commentCount +
+                ", likeCount=" + likeCount +
                 ", score=" + score +
                 '}';
     }

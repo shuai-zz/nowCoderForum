@@ -7,6 +7,5 @@ public record UserProfileVO(
         UserVO user,
         long likeCount,
         long followeeCount,
-        long followerCount,
-        boolean hasFollowed
+        long followerCount
 ) {}

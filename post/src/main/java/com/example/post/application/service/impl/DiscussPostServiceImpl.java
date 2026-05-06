@@ -2,7 +2,6 @@ package com.example.post.application.service.impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.example.interaction.application.service.LikeService;
 import com.example.post.application.dto.PostItem;
 import com.example.post.application.service.DiscussPostService;
 import com.example.post.domain.entity.DiscussPost;
@@ -19,8 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_POST;
-
 /**
  * @author 23211
  */
@@ -30,7 +27,6 @@ public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, Discu
         implements DiscussPostService {
     private final SensitiveFilter sensitiveFilter;
     private final UserService userService;
-    private final LikeService likeService;
     @Override
     public PageData<PostItem> selectDiscussPosts(int pageNum, int pageSize, int userId) {
         Page<DiscussPost> page = new Page<>(pageNum, pageSize);
@@ -44,17 +40,11 @@ public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, Discu
         Map<Integer, User> userMap = userService.listByIds(authIds).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
         // 获取所有帖子点赞数和当前登录用户点赞状态
-        List<Integer> postIds = discussPosts.stream()
-                .map(DiscussPost::getId)
-                .toList();
-        Map<Integer, Long> likeCountMap = likeService.findEntityLikeCounts(ENTITY_TYPE_POST, postIds);
-
         List<PostItem> list = discussPosts.stream()
                 .map(post -> {
                     // TODO: 作者账号被删除，userMap.get()返回null， 可能有NPE问题
                     User user = userMap.get(post.getUserId());
-                    Long likeCount = likeCountMap.get(post.getId());
-                    return new PostItem(post, user, likeCount,0);
+                    return new PostItem(post, user, post.getLikeCount(), 0);
                 })
                 .toList();
         return new PageData<>(list, page.getTotal());
@@ -103,8 +93,6 @@ public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, Discu
     public PostItem findDiscussPostById(int discussPostId, int userId) {
         DiscussPost discussPost = baseMapper.selectById(discussPostId);
         User auth = userService.getById(discussPost.getUserId());
-        long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_POST, discussPostId);
-        int likeStatus = likeService.findEntityLikeStatus(userId, ENTITY_TYPE_POST, discussPostId);
-        return PostItem.of(discussPost, auth, likeCount, likeStatus);
+        return PostItem.of(discussPost, auth, discussPost.getLikeCount(), 0);
     }
 }

@@ -43,4 +43,10 @@ public interface DiscussPostMapper extends BaseMapper<DiscussPost> {
                 .set(DiscussPost::getScore, score)
                 .eq(DiscussPost::getId, postId));
     }
+
+    default int incrementLikeCount(int id, int delta) {
+        return update(null, Wrappers.<DiscussPost>lambdaUpdate()
+                .setSql("like_count = like_count + {0}", delta)
+                .eq(DiscussPost::getId, id));
+    }
 }
