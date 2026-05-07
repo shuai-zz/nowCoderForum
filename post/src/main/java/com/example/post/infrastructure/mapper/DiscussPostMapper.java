@@ -44,6 +44,7 @@ public interface DiscussPostMapper extends BaseMapper<DiscussPost> {
                 .eq(DiscussPost::getId, postId));
     }
 
+    @SuppressWarnings({"MybatisPlusMapperMethodInspection"})
     default int incrementLikeCount(int id, int delta) {
         return update(null, Wrappers.<DiscussPost>lambdaUpdate()
                 .setSql("like_count = like_count + {0}", delta)

@@ -9,7 +9,7 @@ import com.example.shared.result.PageData;
 /**
  * @author 23211
  */
-public interface DiscussPostService extends IService<DiscussPost> {
+public interface DiscussPostService{
     PageData<PostItem> selectDiscussPosts(int pageNum, int pageSize, int userId);
     int insertDiscussPost(DiscussPost discussPost);
 

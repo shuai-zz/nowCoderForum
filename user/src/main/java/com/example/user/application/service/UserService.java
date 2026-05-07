@@ -1,18 +1,18 @@
 package com.example.user.application.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.user.application.dto.LoginResult;
 import com.example.user.domain.LoginTicket;
 import com.example.user.domain.User;
 import org.springframework.security.core.GrantedAuthority;
 
 import java.util.Collection;
-import java.util.Map;
+import java.util.List;
 
 /**
  * @author 23211
  */
-public interface UserService extends IService<User> {
+public interface UserService{
+    User getById(int id);
     void register(User user);
     void activation(int userId, String code);
     LoginResult login(String username, String password, int expiredSeconds);
@@ -26,6 +26,8 @@ public interface UserService extends IService<User> {
     void updatePassword(int id, String oldPassword, String newPassword);
 
     User findUserByName(String toName);
+
+    List<User> listByIds(List<Integer> ids);
 
     Collection<? extends GrantedAuthority> getAuthorities(int id);
 }

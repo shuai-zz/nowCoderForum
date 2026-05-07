@@ -1,10 +1,8 @@
 package com.example.interaction.application.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.interaction.application.dto.FollowListItem;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author zhaoshuai

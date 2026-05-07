@@ -1,7 +1,6 @@
 package com.example.post.application.service.impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.post.application.dto.PostItem;
 import com.example.post.application.service.DiscussPostService;
 import com.example.post.domain.entity.DiscussPost;
@@ -23,15 +22,17 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, DiscussPost>
+public class DiscussPostServiceImpl
         implements DiscussPostService {
+    private final DiscussPostMapper discussPostMapper;
     private final SensitiveFilter sensitiveFilter;
     private final UserService userService;
+
     @Override
     public PageData<PostItem> selectDiscussPosts(int pageNum, int pageSize, int userId) {
         Page<DiscussPost> page = new Page<>(pageNum, pageSize);
         // 所有帖子
-        List<DiscussPost> discussPosts = baseMapper.selectDiscussPosts(page, userId);
+        List<DiscussPost> discussPosts = discussPostMapper.selectDiscussPosts(page, userId);
         // 获取所有帖子作者
         List<Integer> authIds = discussPosts.stream()
                 .map(DiscussPost::getUserId)
@@ -52,7 +53,7 @@ public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, Discu
 
     @Override
     public int insertDiscussPost(DiscussPost discussPost) {
-        if(discussPost==null) {
+        if (discussPost == null) {
             throw new IllegalArgumentException("post cannot be null");
         }
         // 转义HTML标记
@@ -64,34 +65,34 @@ public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, Discu
         discussPost.setContent(sensitiveFilter.filter(discussPost.getContent()));
 
 
-        return baseMapper.insert(discussPost);
+        return discussPostMapper.insert(discussPost);
     }
 
 
     @Override
     public int updateCommentCount(int entityId, int count) {
-        return baseMapper.updateCommentCount(entityId,count);
+        return discussPostMapper.updateCommentCount(entityId, count);
     }
 
     @Override
     public int updateType(int entityId, int type) {
-        return baseMapper.updateType(entityId,type);
+        return discussPostMapper.updateType(entityId, type);
     }
 
     @Override
     public int updateStatus(int entityId, int status) {
-        return baseMapper.updateStatus(entityId,status);
+        return discussPostMapper.updateStatus(entityId, status);
     }
 
 
     @Override
     public void updateScore(int postId, double score) {
-        baseMapper.updateScore(postId,score);
+        discussPostMapper.updateScore(postId, score);
     }
 
     @Override
     public PostItem findDiscussPostById(int discussPostId, int userId) {
-        DiscussPost discussPost = baseMapper.selectById(discussPostId);
+        DiscussPost discussPost = discussPostMapper.selectById(discussPostId);
         User auth = userService.getById(discussPost.getUserId());
         return PostItem.of(discussPost, auth, discussPost.getLikeCount(), 0);
     }

@@ -2,7 +2,6 @@ package com.example.interaction.application.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.interaction.application.dto.CommentWithLike;
 import com.example.interaction.application.service.CommentService;
 import com.example.interaction.application.service.LikeService;
@@ -29,8 +28,8 @@ import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_COMMENT;
  */
 @Service
 @RequiredArgsConstructor
-public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> implements CommentService {
-
+public class CommentServiceImpl implements CommentService {
+    private final CommentMapper commentMapper;
     private final SensitiveFilter sensitiveFilter;
     private final DiscussPostService discussPostService;
     private final LikeService likeService;
@@ -38,13 +37,13 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     @Override
     public PageData<Comment> findCommentsByEntity(int entityType, int entityId, int pageNum, int pageSize) {
         Page<Comment> page = new Page<>(pageNum, pageSize);
-        List<Comment> list = baseMapper.selectCommentsByEntity(page, entityType, entityId);
+        List<Comment> list = commentMapper.selectCommentsByEntity(page, entityType, entityId);
         return new PageData<>(list, page.getTotal());
     }
 
     @Override
     public int findCommentCount(int entityType, int entityId) {
-        return baseMapper.selectCount(Wrappers.<Comment>lambdaQuery()
+        return commentMapper.selectCount(Wrappers.<Comment>lambdaQuery()
                 .eq(Comment::getEntityType, entityType)
                 .eq(Comment::getEntityId, entityId)
                 .eq(Comment::getStatus, 0)).intValue();
@@ -58,7 +57,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         }
         comment.setContent(HtmlUtils.htmlEscape(comment.getContent()));
         comment.setContent(sensitiveFilter.filter(comment.getContent()));
-        int rows = baseMapper.insert(comment);
+        int rows = commentMapper.insert(comment);
 
         if (comment.getEntityType() == ForumConstant.ENTITY_TYPE_POST) {
             int count = findCommentCount(comment.getEntityType(), comment.getEntityId());
@@ -69,7 +68,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     @Override
     public Comment findCommentById(int id) {
-        return baseMapper.selectById(id);
+        return commentMapper.selectById(id);
     }
 
 
@@ -77,7 +76,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     public PageData<CommentWithLike> findCommentsWithLike(int entityType, int entityId, int pageNum, int pageSize, int currentUserId) {
         Page<Comment> page=new Page<>(pageNum, pageSize);
         // 所有评论
-        List<Comment> comments = baseMapper.selectCommentsByEntity(page, entityType, entityId);
+        List<Comment> comments = commentMapper.selectCommentsByEntity(page, entityType, entityId);
         if(comments.isEmpty()){
             return new PageData<>(List.of(), 0);
         }

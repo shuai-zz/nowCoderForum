@@ -1,7 +1,5 @@
 package com.example.user.application.service.impl;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.shared.exception.AuthException;
 import com.example.shared.exception.ValidationException;
 import com.example.shared.utils.ForumUtil;
@@ -28,38 +26,37 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-
-import static com.example.shared.constant.ForumConstant.*;
 
 
 /**
  * @author 23211
  */
 @Service
-public class UserServiceImpl extends ServiceImpl<UserMapper, User>
+public class UserServiceImpl
         implements UserService, UserDetailsService {
 
     private final MailClient mailClient;
     private final RedisTemplate<String, Object> redisTemplate;
     private final UserStatisticsMapper userStatisticsMapper;
+    private final UserMapper userMapper;
 
     public UserServiceImpl(MailClient mailClient,
                            RedisTemplate<String, Object> redisTemplate,
-                           UserStatisticsMapper userStatisticsMapper) {
+                           UserStatisticsMapper userStatisticsMapper,
+                           UserMapper userMapper) {
         this.mailClient = mailClient;
         this.redisTemplate = redisTemplate;
         this.userStatisticsMapper = userStatisticsMapper;
+        this.userMapper = userMapper;
     }
 
     @Value("${nowcoder.path.frontend}")
     private String frontendDomain;
 
     @Override
-    public User getById(Serializable id) {
-        int userId = (int) id;
+    public User getById(int userId) {
         User user = getCache(userId);
         if (user == null) {
             user = initCache(userId);
@@ -91,10 +88,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new ValidationException("Password length must be greater than 8");
         }
 
-        if (baseMapper.exists(Wrappers.<User>lambdaQuery().eq(User::getUsername, username))) {
+        if (userMapper.existsUsername(username)) {
             throw new ValidationException("This username already exists");
         }
-        if (baseMapper.exists(Wrappers.<User>lambdaQuery().eq(User::getEmail, email))) {
+        if (userMapper.existsEmail(email)) {
             throw new ValidationException("This email already exists");
         }
 
@@ -105,7 +102,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         user.setActivationCode(ForumUtil.generateUuid());
         user.setAvatarUrl(String.format("https://images.nowcoder.com/head/%dt.png", new Random().nextInt(1000)));
         user.setCreateTime(new Date());
-        baseMapper.insert(user);
+        userMapper.insert(user);
 
         // 同步初始化统计读模型行：保证后续 EntityLikedEvent / FollowEvent
         // 触发的 UPDATE...WHERE user_id=? 一定能命中已有行。
@@ -134,7 +131,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (!Objects.equals(user.getActivationCode(), code)) {
             throw new ValidationException("Invalid activation code");
         }
-        baseMapper.updateStatus(userId, 1);
+        userMapper.updateStatus(userId, 1);
         clearCache(userId);
     }
 
@@ -147,7 +144,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new ValidationException("Password cannot be empty");
         }
 
-        User user = baseMapper.selectByName(username);
+        User user = userMapper.selectByName(username);
         if (user == null) {
             throw new AuthException("This username does not exist");
         }
@@ -156,11 +153,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
 
         password = ForumUtil.md5(password + user.getSalt());
-        if(!Objects.equals(password, user.getPassword())){
+        if (!Objects.equals(password, user.getPassword())) {
             throw new AuthException("Password error");
         }
 
-        LoginTicket loginTicket=LoginTicket.builder()
+        LoginTicket loginTicket = LoginTicket.builder()
                 .userId(user.getId())
                 .ticket(ForumUtil.generateUuid())
                 .status(0)
@@ -196,14 +193,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     public int updateAvatar(int id, String avatarUrl) {
 //        return baseMapper.updateAvatar(id, avatarUrl);
-        int rows = baseMapper.updateAvatar(id, avatarUrl);
+        int rows = userMapper.updateAvatar(id, avatarUrl);
         clearCache(id);
         return rows;
     }
 
     @Override
     public void updatePassword(int id, String oldPassword, String newPassword) {
-        User user = baseMapper.selectById(id);
+        User user = userMapper.selectById(id);
         oldPassword = ForumUtil.md5(oldPassword + user.getSalt());
         if (!oldPassword.equals(user.getPassword())) {
             throw new ValidationException("Incorrect Password");
@@ -215,7 +212,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new ValidationException("New password cannot be the same as the old password");
         }
         try {
-            baseMapper.updatePassword(id, ForumUtil.md5(newPassword + user.getSalt()));
+            userMapper.updatePassword(id, ForumUtil.md5(newPassword + user.getSalt()));
         } catch (Exception e) {
             throw new ValidationException("Failed to update password");
         }
@@ -223,7 +220,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public User findUserByName(String name) {
-        return baseMapper.selectByName(name);
+        return userMapper.selectByName(name);
     }
 
     // 1. 优先从缓存中取值
@@ -234,7 +231,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     // 2. 如果缓存中没有，再从数据库取，并放入缓存
     private User initCache(int userId) {
-        User user = baseMapper.selectById(userId);
+        User user = userMapper.selectById(userId);
         String redisKey = RedisKeyUtil.getUserKey(userId);
         redisTemplate.opsForValue().set(redisKey, user, 3600, TimeUnit.SECONDS);
         return user;
@@ -261,5 +258,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     public Collection<? extends GrantedAuthority> getAuthorities(int id) {
         User user = this.getById(id);
         return UserAuthorityResolver.resolve(user.getType());
+    }
+
+    @Override
+    public List<User> listByIds(List<Integer> ids) {
+        return userMapper.selectBatchIds(ids);
     }
 }

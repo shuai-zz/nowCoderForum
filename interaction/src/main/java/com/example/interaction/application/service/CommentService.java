@@ -8,7 +8,7 @@ import com.example.shared.result.PageData;
 /**
  * @author zhaoshuai
  */
-public interface CommentService extends IService<Comment> {
+public interface CommentService{
 
     PageData<Comment> findCommentsByEntity(int entityType, int entityId, int pageNum, int pageSize);
 

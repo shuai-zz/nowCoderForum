@@ -6,6 +6,8 @@ import com.example.user.domain.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
+import java.util.List;
+
 /**
  * @author 23211
  */
@@ -35,4 +37,21 @@ public interface UserMapper extends BaseMapper<User> {
                 .set(User::getPassword, password)
                 .eq(User::getId, id));
     }
+
+
+    default boolean existsUsername(String username){
+        return exists(Wrappers.<User>lambdaQuery()
+                .eq(User::getUsername, username));
+    }
+
+    default boolean existsEmail(String email){
+        return exists(Wrappers.<User>lambdaQuery()
+                .eq(User::getEmail, email));
+    }
+
+    default List<User> selectBatchIds(List<Integer> ids){
+        return selectList(Wrappers.<User>lambdaQuery()
+                .in(User::getId, ids));
+    }
+
 }
