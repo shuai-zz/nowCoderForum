@@ -7,7 +7,6 @@ import com.example.shared.utils.ForumUtil;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
 import com.example.user.domain.entity.UserStatistics;
-import com.example.user.infrastructure.mapper.UserStatisticsMapper;
 import com.example.user.infrastructure.utils.SecurityUtil;
 import com.example.user.interfaces.vo.UserProfileVO;
 import com.example.user.interfaces.vo.UserVO;
@@ -34,7 +33,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
 
-import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_USER;
 
 /**
  * @author zhaoshuai
@@ -49,7 +47,6 @@ public class UserController {
     private static final Set<String> SUPPORTED_AVATAR_EXT = Set.of(".jpg", ".jpeg", ".png");
 
     private final UserService userService;
-    private final UserStatisticsMapper userStatisticsMapper;
 
 
     @Value("${nowcoder.path.upload}")
@@ -65,7 +62,7 @@ public class UserController {
         if (user == null) {
             throw new ResourceNotFoundException("User not found: " + id);
         }
-        UserStatistics stats = userStatisticsMapper.selectById(id);
+        UserStatistics stats = userService.getStatistics(id);
         long likeCount = stats == null ? 0 : stats.getReceivedLikeCount();
         long followeeCount = stats == null ? 0 : stats.getFolloweeCount();
         long followerCount = stats == null ? 0 : stats.getFollowerCount();

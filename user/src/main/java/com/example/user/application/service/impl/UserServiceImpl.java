@@ -261,6 +261,11 @@ public class UserServiceImpl
     }
 
     @Override
+    public UserStatistics getStatistics(int id) {
+        return userStatisticsMapper.selectById(id);
+    }
+
+    @Override
     public List<User> listByIds(List<Integer> ids) {
         return userMapper.selectBatchIds(ids);
     }

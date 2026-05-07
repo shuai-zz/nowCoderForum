@@ -14,4 +14,5 @@ public interface FollowService {
     List<FollowListItem> findFollowees(int userId, int pageNum, int pageSize);
     List<FollowListItem> findFollowers(int userId, int pageNum, int pageSize);
 
+
 }

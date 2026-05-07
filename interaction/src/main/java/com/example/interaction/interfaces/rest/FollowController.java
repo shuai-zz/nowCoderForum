@@ -9,7 +9,6 @@ import com.example.shared.result.Result;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
 import com.example.user.domain.entity.UserStatistics;
-import com.example.user.infrastructure.mapper.UserStatisticsMapper;
 import com.example.user.interfaces.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,7 +43,6 @@ public class FollowController {
 
     private final FollowService followService;
     private final UserService userService;
-    private final UserStatisticsMapper userStatisticsMapper;
     private final EventProducer eventProducer;
 
     @Operation(summary = "关注")
@@ -112,12 +110,12 @@ public class FollowController {
      * 列表分页仍走 Redis ZSet（按时间排序）。
      */
     private long readFolloweeCount(int userId) {
-        UserStatistics stats = userStatisticsMapper.selectById(userId);
+        UserStatistics stats = userService.getStatistics(userId);
         return stats == null ? 0L : stats.getFolloweeCount();
     }
 
     private long readFollowerCount(int userId) {
-        UserStatistics stats = userStatisticsMapper.selectById(userId);
+        UserStatistics stats = userService.getStatistics(userId);
         return stats == null ? 0L : stats.getFollowerCount();
     }
 
