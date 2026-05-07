@@ -13,6 +13,8 @@ import com.example.user.domain.User;
 import com.example.user.domain.entity.UserStatistics;
 import com.example.user.infrastructure.mapper.UserMapper;
 import com.example.user.infrastructure.mapper.UserStatisticsMapper;
+import com.example.user.infrastructure.security.UserAuthorityResolver;
+import com.example.user.infrastructure.security.UserDetailsAdapter;
 import com.example.user.infrastructure.utils.MailClient;
 import lombok.NonNull;
 import org.apache.commons.lang3.StringUtils;
@@ -248,20 +250,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     @NonNull
     public UserDetails loadUserByUsername(@NonNull String username) throws UsernameNotFoundException {
-        return this.findUserByName(username);
+        User user = this.findUserByName(username);
+        if (user == null) {
+            throw new UsernameNotFoundException("User not found: " + username);
+        }
+        return new UserDetailsAdapter(user);
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities(int id) {
         User user = this.getById(id);
-
-        List<GrantedAuthority> list = new ArrayList<>();
-        list.add((GrantedAuthority) () ->
-                switch (user.getType()) {
-                    case 1 -> AUTHORITY_ADMIN;
-                    case 2 -> AUTHORITY_MODERATOR;
-                    default -> AUTHORITY_USER;
-                });
-        return list;
+        return UserAuthorityResolver.resolve(user.getType());
     }
 }

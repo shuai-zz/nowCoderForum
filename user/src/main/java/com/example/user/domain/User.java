@@ -4,21 +4,15 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Builder;
-import lombok.NonNull;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
-import java.util.List;
 
 /**
  * @author 23211
  */
 @TableName("user")
 @Builder
-public class User implements UserDetails {
+public class User {
     @TableId(type = IdType.AUTO)
     private int id;
     private String username;
@@ -58,7 +52,6 @@ public class User implements UserDetails {
         this.id = id;
     }
 
-    @Override
     public String getUsername() {
         return username;
     }
@@ -67,7 +60,6 @@ public class User implements UserDetails {
         this.username = username;
     }
 
-    @Override
     public String getPassword() {
         return password;
     }
@@ -130,42 +122,5 @@ public class User implements UserDetails {
 
     public void setCreateTime(Date createTime) {
         this.createTime = createTime;
-    }
-
-    @Override
-    @NonNull
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        List<GrantedAuthority> list = new ArrayList<>();
-        list.add((GrantedAuthority) () -> {
-            if (type == 1) {
-                return "ADMIN";
-            }
-            return "USER";
-        });
-        return list;
-    }
-
-    // ture-账户未过期
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    // ture-账户未锁定
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    // ture-凭证未过期
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    // ture-账户可用
-    @Override
-    public boolean isEnabled() {
-        return status==1;
     }
 }
