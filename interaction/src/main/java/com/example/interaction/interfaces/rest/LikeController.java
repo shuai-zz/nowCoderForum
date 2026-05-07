@@ -2,8 +2,8 @@ package com.example.interaction.interfaces.rest;
 
 import com.example.interaction.application.service.LikeService;
 import com.example.interaction.interfaces.dto.LikeRequest;
+import com.example.post.application.service.DiscussPostService;
 import com.example.shared.result.Result;
-import com.example.shared.utils.RedisKeyUtil;
 import com.example.user.domain.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,7 +13,6 @@ import com.example.shared.messaging.Event;
 
 import com.example.interaction.interfaces.vo.LikeStatusVO;
 import com.example.shared.messaging.EventProducer;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,7 +34,7 @@ public class LikeController {
 
     private final LikeService likeService;
     private final EventProducer eventProducer;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final DiscussPostService discussPostService;
 
     @Operation(summary = "对实体 toggle 点赞，返回最新计数与当前用户点赞状态")
     @PostMapping
@@ -57,7 +56,7 @@ public class LikeController {
 
         // 点赞发生在帖子上时刷新分数
         if (req.entityType() == ENTITY_TYPE_POST && req.postId() != null) {
-            redisTemplate.opsForSet().add(RedisKeyUtil.getPostScore(), req.postId());
+            discussPostService.markForScoreRefresh(req.postId());
         }
 
         return Result.ok(new LikeStatusVO(likeCount, likeStatus));

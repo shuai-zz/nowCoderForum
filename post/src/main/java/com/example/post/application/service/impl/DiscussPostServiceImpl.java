@@ -6,10 +6,12 @@ import com.example.post.application.service.DiscussPostService;
 import com.example.post.domain.entity.DiscussPost;
 import com.example.post.infrastructure.mapper.DiscussPostMapper;
 import com.example.shared.result.PageData;
+import com.example.shared.utils.RedisKeyUtil;
 import com.example.shared.utils.SensitiveFilter;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.HtmlUtils;
 
@@ -27,6 +29,7 @@ public class DiscussPostServiceImpl
     private final DiscussPostMapper discussPostMapper;
     private final SensitiveFilter sensitiveFilter;
     private final UserService userService;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Override
     public PageData<PostItem> selectDiscussPosts(int pageNum, int pageSize, int userId) {
@@ -88,6 +91,11 @@ public class DiscussPostServiceImpl
     @Override
     public void updateScore(int postId, double score) {
         discussPostMapper.updateScore(postId, score);
+    }
+
+    @Override
+    public void markForScoreRefresh(int postId) {
+        redisTemplate.opsForSet().add(RedisKeyUtil.getPostScore(), postId);
     }
 
     @Override

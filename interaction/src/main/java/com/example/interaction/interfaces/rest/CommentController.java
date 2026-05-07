@@ -7,7 +7,6 @@ import com.example.post.application.service.DiscussPostService;
 import com.example.post.domain.entity.DiscussPost;
 import com.example.shared.exception.ResourceNotFoundException;
 import com.example.shared.result.Result;
-import com.example.shared.utils.RedisKeyUtil;
 import com.example.user.domain.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 
 import com.example.shared.messaging.Event;
 import com.example.shared.messaging.EventProducer;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,7 +38,6 @@ public class CommentController {
     private final CommentService commentService;
     private final DiscussPostService discussPostService;
     private final EventProducer eventProducer;
-    private final RedisTemplate<String, Object> redisTemplate;
 
     @Operation(summary = "发布评论或回复")
     @PostMapping
@@ -74,7 +71,7 @@ public class CommentController {
                     .setUserId(me.getId())
                     .setEntityType(ENTITY_TYPE_POST)
                     .setEntityId(req.entityId()));
-            redisTemplate.opsForSet().add(RedisKeyUtil.getPostScore(), req.entityId());
+            discussPostService.markForScoreRefresh(req.entityId());
         }
 
         return Result.ok(c.getId());

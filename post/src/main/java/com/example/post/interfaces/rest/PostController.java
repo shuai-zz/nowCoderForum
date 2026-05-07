@@ -8,8 +8,6 @@ import com.example.shared.exception.ResourceNotFoundException;
 import com.example.shared.result.PageData;
 import com.example.shared.result.PageResult;
 import com.example.shared.result.Result;
-import com.example.shared.utils.RedisKeyUtil;
-import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
 import com.example.user.interfaces.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,7 +19,6 @@ import com.example.post.interfaces.vo.PostDetailVO;
 import com.example.post.interfaces.vo.PostListItemVO;
 import com.example.shared.messaging.Event;
 import com.example.shared.messaging.EventProducer;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,9 +43,7 @@ public class PostController {
     private static final int POST_STATUS_DELETED = 2;
 
     private final DiscussPostService discussPostService;
-    private final UserService userService;
     private final EventProducer eventProducer;
-    private final RedisTemplate<String, Object> redisTemplate;
 
     @Operation(summary = "帖子列表（可选按作者筛选）")
     @GetMapping
@@ -86,7 +81,7 @@ public class PostController {
                 .setUserId(me.getId())
                 .setEntityType(ENTITY_TYPE_POST)
                 .setEntityId(post.getId()));
-        redisTemplate.opsForSet().add(RedisKeyUtil.getPostScore(), post.getId());
+        discussPostService.markForScoreRefresh(post.getId());
 
         return Result.ok(post.getId());
     }
@@ -128,7 +123,7 @@ public class PostController {
                 .setUserId(me.getId())
                 .setEntityType(ENTITY_TYPE_POST)
                 .setEntityId(id));
-        redisTemplate.opsForSet().add(RedisKeyUtil.getPostScore(), id);
+        discussPostService.markForScoreRefresh(id);
         return Result.ok();
     }
 

@@ -20,4 +20,9 @@ public interface DiscussPostService{
     int updateStatus(int entityId, int status);
 
     void updateScore(int postId, double score);
+
+    /**
+     * 标记帖子需要重新计算分数（加入 Quartz 刷新队列）。
+     */
+    void markForScoreRefresh(int postId);
 }
