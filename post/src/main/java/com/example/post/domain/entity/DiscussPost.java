@@ -1,48 +1,32 @@
 package com.example.post.domain.entity;
 
-
-
-
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Builder;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.elasticsearch.annotations.Document;
-import org.springframework.data.elasticsearch.annotations.Field;
-import org.springframework.data.elasticsearch.annotations.FieldType;
-import org.springframework.data.elasticsearch.annotations.Setting;
 
 import java.util.Date;
 
 /**
+ * 帖子领域实体（仅 MySQL 持久化）。
+ * <p>ES 索引视图见 {@code com.example.search.domain.SearchablePost}，
+ * 由 search 模块负责双向投影，避免 domain 实体被 ES 注解污染。
+ *
  * @author 23211
  */
 @TableName("discuss_post")
-@Document(indexName = "discusspost")
-@Setting(shards = 6, replicas = 3)
 @Builder
 public class DiscussPost {
     @TableId(type = IdType.AUTO)
-    @Id
     private int id;
-    @Field(type= FieldType.Integer)
     private int userId;
-    @Field(type= FieldType.Text, analyzer = "standard", searchAnalyzer = "standard")
     private String title;
-    @Field(type= FieldType.Text, analyzer = "standard", searchAnalyzer = "standard")
     private String content;
-    @Field(type=FieldType.Integer)
     private int type;
-    @Field(type=FieldType.Integer)
     private int status;
-    @Field(type=FieldType.Date)
     private Date createTime;
-    @Field(type=FieldType.Integer)
     private int commentCount;
-    @Field(type=FieldType.Integer)
     private int likeCount;
-    @Field(type=FieldType.Double)
     private double score;
 
     public int getId() {

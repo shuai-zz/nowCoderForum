@@ -4,7 +4,8 @@ import com.example.interaction.application.service.LikeService;
 import com.example.post.application.dto.PostItem;
 import com.example.post.domain.entity.DiscussPost;
 import com.example.search.application.service.ElasticSearchService;
-import com.example.search.infrastructure.mapper.DiscussPostRepository;
+import com.example.search.domain.SearchablePost;
+import com.example.search.infrastructure.mapper.SearchablePostRepository;
 import com.example.shared.result.PageData;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
@@ -24,24 +25,26 @@ import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_POST;
 @RequiredArgsConstructor
 public class ElasticSearchServiceImpl implements ElasticSearchService {
 
-    private final DiscussPostRepository discussPostRepository;
+    private final SearchablePostRepository searchablePostRepository;
     private final UserService userService;
     private final LikeService likeService;
 
     @Override
     public void saveDiscussPost(DiscussPost discussPost) {
-        discussPostRepository.save(discussPost);
+        searchablePostRepository.save(SearchablePost.from(discussPost));
     }
 
     @Override
     public void deleteDiscussPost(int id) {
-        discussPostRepository.deleteById(id);
+        searchablePostRepository.deleteById(id);
     }
 
     @Override
     public PageData<PostItem> searchDiscussPost(String keyWord, int pageNum, int pageSize) {
-        PageData<DiscussPost> page = discussPostRepository.searchByKeyword(keyWord, pageNum, pageSize);
-        List<DiscussPost> posts = page.items();
+        PageData<SearchablePost> page = searchablePostRepository.searchByKeyword(keyWord, pageNum, pageSize);
+        List<DiscussPost> posts = page.items().stream()
+                .map(SearchablePost::toDiscussPost)
+                .toList();
 
         List<Integer> authIds = posts.stream()
                 .map(DiscussPost::getUserId)

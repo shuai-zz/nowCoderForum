@@ -1,7 +1,7 @@
 package com.example.search.infrastructure.mapper;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
-import com.example.post.domain.entity.DiscussPost;
+import com.example.search.domain.SearchablePost;
 import com.example.shared.result.PageData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -19,17 +19,18 @@ import java.util.List;
 
 /**
  * Spring Data 命名约定：实现类必须叫 {主接口}Impl 且与主接口同包，
- * 才会被自动织入到 DiscussPostRepository。
+ * 才会被自动织入到 SearchablePostRepository。
  *
  * @author zhaoshuai
  */
 @RequiredArgsConstructor
-public class DiscussPostRepositoryImpl implements DiscussPostRepositoryCustom {
+public class SearchablePostRepositoryImpl implements SearchablePostRepositoryCustom {
 
     private final ElasticsearchOperations elasticsearchOperations;
 
     @Override
-    public PageData<DiscussPost> searchByKeyword(String keyword, int pageNum, int pageSize) {
+    public PageData<SearchablePost> searchByKeyword(String keyword, int pageNum, int pageSize) {
+        // 创建高亮查询
         HighlightParameters highlightParameters = HighlightParameters.builder()
                 .withPreTags("<em>")
                 .withPostTags("</em>")
@@ -39,8 +40,9 @@ public class DiscussPostRepositoryImpl implements DiscussPostRepositoryCustom {
                 highlightParameters,
                 List.of(new HighlightField("title"), new HighlightField("content"))
         );
-        HighlightQuery highlightQuery = new HighlightQuery(highlight, DiscussPost.class);
+        HighlightQuery highlightQuery = new HighlightQuery(highlight, SearchablePost.class);
 
+        // 创建查询
         NativeQuery query = NativeQuery.builder()
                 .withQuery(QueryBuilders.multiMatch()
                         .query(keyword)
@@ -56,11 +58,11 @@ public class DiscussPostRepositoryImpl implements DiscussPostRepositoryCustom {
                 .withHighlightQuery(highlightQuery)
                 .build();
 
-        SearchHits<DiscussPost> searchHits = elasticsearchOperations.search(query, DiscussPost.class);
+        SearchHits<SearchablePost> searchHits = elasticsearchOperations.search(query, SearchablePost.class);
 
-        List<DiscussPost> list = new ArrayList<>(searchHits.getSearchHits().size());
+        List<SearchablePost> list = new ArrayList<>(searchHits.getSearchHits().size());
         for (var hit : searchHits.getSearchHits()) {
-            DiscussPost post = hit.getContent();
+            SearchablePost post = hit.getContent();
             List<String> titleHighlights = hit.getHighlightField("title");
             if (!titleHighlights.isEmpty()) {
                 post.setTitle(titleHighlights.getFirst());

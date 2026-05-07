@@ -1,6 +1,6 @@
 package com.example.search.infrastructure.mapper;
 
-import com.example.post.domain.entity.DiscussPost;
+import com.example.search.domain.SearchablePost;
 import com.example.shared.result.PageData;
 
 /**
@@ -8,6 +8,6 @@ import com.example.shared.result.PageData;
  *
  * @author zhaoshuai
  */
-public interface DiscussPostRepositoryCustom {
-    PageData<DiscussPost> searchByKeyword(String keyword, int pageNum, int pageSize);
+public interface SearchablePostRepositoryCustom {
+    PageData<SearchablePost> searchByKeyword(String keyword, int pageNum, int pageSize);
 }

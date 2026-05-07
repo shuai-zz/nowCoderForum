@@ -180,3 +180,246 @@ com.example.<module>/
 - **`search → user` 的运行时调用**（搜索结果展示作者信息）：单体下没问题，将来拆微服务时改为 RPC/HTTP。
 - **`system` 模块依赖较广**（Quartz job 调用了几乎所有业务 service）：拆微服务时这里要改异步事件。
 - **新增模块时必须同步更新**根 `application.yaml` 的 `mybatis-plus.type-aliases-package`。
+
+---
+
+## DDD Architecture Audit (2026-05-07)
+
+> 当前项目是"**DDD 包结构 + Transaction Script 实质**"：4 层目录摆得整齐，但每一层都做了不该做的事 — domain 在和框架谈恋爱，application 在继承 ORM 基类，interfaces 在直接操作基础设施。本节是一次完整审计，定位为简历项目的优化路线图。
+
+### 🔴 P0 — 严格违反 DDD（面试一眼能看出的硬伤）
+
+#### 1. Domain 实体被框架污染
+
+**A. `User implements UserDetails`** — `user/src/main/java/com/example/user/domain/User.java:21`
+- domain 实体直接 implements Spring Security 的 `UserDetails`，import 了 `org.springframework.security.*`
+- 同时打 MyBatis Plus 的 `@TableName` / `@TableId`
+- **改法**：保留 `User` 为纯 POJO；在 `user/infrastructure/security/` 下加 `UserDetailsAdapter implements UserDetails`，包一层
+
+**B. `DiscussPost` 同时是 MySQL 实体 + ES 文档** — `post/src/main/java/com/example/post/domain/entity/DiscussPost.java`
+- `@TableName("discuss_post")` + `@Document(indexName="discusspost")` + `@Setting(shards=6, replicas=3)` + 字段全打 `@Field`
+- search 模块的 highlight 逻辑直接 set 到 `post.title`（`search/.../DiscussPostRepositoryImpl.java:66`），把 `<em>...</em>` 塞回 domain 字段
+- **改法**：`post.domain.entity.DiscussPost`（纯 domain）+ `search.domain.SearchablePost`（ES 文档，独立类）
+
+#### 2. Application Service 继承 MyBatis Plus 基类
+
+```java
+DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, DiscussPost>
+CommentServiceImpl     extends ServiceImpl<CommentMapper, Comment>
+UserServiceImpl        extends ServiceImpl<UserMapper, User>
+```
+- 继承会把 `IService<T>` 的 100+ 方法（`saveBatch / removeById / listByIds / getOne`...）暴露成接口契约的一部分
+- Controller 已经在用 `userService.listByIds(authIds)` 这种基类方法 → **接口契约被永久绑死在 MP**
+- **改法**：去掉 `extends ServiceImpl`，需要的方法在 Service 接口里显式声明，impl 注入 `Mapper` 调用
+
+#### 3. Controller 跨模块直接注入其他模块的 Mapper
+
+`interaction/.../FollowController.java:47`：
+```java
+private final UserStatisticsMapper userStatisticsMapper;  // ← user 模块的 infrastructure
+```
+- 违反本文件"模块间依赖规则"第 1 条："禁止跨模块访问 infrastructure"
+- **改法**：在 `UserService` 加 `getStatistics(int userId): UserStatistics` 方法
+
+#### 4. Controller 直接操作 RedisTemplate
+
+`PostController` / `LikeController` / `CommentController` 都注入了 `RedisTemplate<String, Object>` 直接做：
+```java
+redisTemplate.opsForSet().add(RedisKeyUtil.getPostScore(), post.getId());
+```
+- 接口层在做"把 postId 加入分数刷新队列"这种领域逻辑
+- **改法**：封到 `DiscussPostService.markForScoreRefresh(int postId)`
+
+---
+
+### 🟠 P1 — 应该改，DDD 学习价值高
+
+#### 5. Application DTO 跨模块持有他人的 domain 实体
+
+```java
+record PostItem(DiscussPost discussPost, User author, ...)         // post 持有 user.User
+record FollowListItem(User user, Date followTime)                  // interaction 持有 user.User
+record MessageItem(... User from, User target, ...)                // message 持有 user.User
+```
+- 跨 bounded context 不应该共享 domain 实体
+- **改法**：传 ID 让 controller 组装；或者在每个模块定义 `AuthorRef(int id, String username, String avatar)` 这种局部 ValueObject（ACL/防腐层）
+- 解掉这条后，post / message 在 application 层就不再需要注入 `UserService`
+
+#### 6. Domain 模型贫血（Anemic Domain Model）
+
+所有实体都是 `@Data` / 全 getter+setter，零业务行为。**应该收进 domain 的方法**：
+```java
+// User
+boolean canDelete(DiscussPost p)  { return type == ADMIN; }
+boolean canTopOrFeature()         { return type == MODERATOR || type == ADMIN; }
+void activate(String code) { ... }       // 把 UserServiceImpl.activation 的规则收进来
+
+// DiscussPost
+void markAsTop()       { this.type = TOP; }
+void markAsWonderful() { this.status = WONDERFUL; }
+void softDelete()      { this.status = DELETED; }
+boolean isDeleted()    { return status == DELETED; }
+double calculateScore(long likeCount, Date epoch) { ... }   // 收 PostScoreRefreshJob 里的算分公式
+
+// Comment
+boolean isReply()  { return entityType == ENTITY_TYPE_COMMENT; }
+boolean isOnPost() { return entityType == ENTITY_TYPE_POST; }
+```
+- 当前所有规则都堆在 `Service.updateXxx(id, value)` 这种 Transaction Script 里
+
+#### 7. Application Service 含领域逻辑（应抽 Domain Service）
+
+`DiscussPostServiceImpl.insertDiscussPost` / `CommentServiceImpl.addComment` / `MessageServiceImpl.addMessage` **三处重复**：
+```java
+discussPost.setTitle(HtmlUtils.htmlEscape(discussPost.getTitle()));
+discussPost.setContent(HtmlUtils.htmlEscape(discussPost.getContent()));
+discussPost.setTitle(sensitiveFilter.filter(discussPost.getTitle()));
+discussPost.setContent(sensitiveFilter.filter(discussPost.getContent()));
+```
+- HTML 转义 + 敏感词过滤 = "用户产出内容"的领域规则
+- **改法**：抽 `ContentSanitizer` 领域服务，三处复用
+
+#### 8. search 模块没有自己的 Read Model
+
+- `ElasticSearchServiceImpl` 直接 `import com.example.post.domain.entity.DiscussPost`
+- ES 高亮 title/content 被回写到 `DiscussPost.title`，破坏 domain 完整性
+- **改法**：
+  - `search/domain/SearchablePost`（ES 文档结构）
+  - `search/application/dto/SearchResult`（含独立的 highlight 字段，不污染 title）
+
+#### 9. 模块包结构不一致
+
+| 模块 | 问题 |
+|---|---|
+| `user/` | `domain/User.java` + `domain/LoginTicket.java` 在 domain 根；`domain/entity/UserStatistics.java` 在 entity/ |
+| `system/` | 没有 `application/service/` 子包，`DataService.java` 直接放 `application/`，impl 放 `application/impl/` |
+| `search/` | 完全没有 domain 层 |
+
+#### 10. `UserStatsEventListener` 不区分 entityType
+
+```java
+@EventListener
+public void onLiked(EntityLikedEvent event) {
+    userStatisticsMapper.incrementReceivedLikeCount(event.entityUserId(), 1);  // 不分 type 就 +1
+}
+```
+- 当前任何 entityType 的 like 都会增加用户的 received_like_count（包括评论的赞）
+- 语义模糊，需要明确：是只统计帖子赞，还是所有内容的赞都算？
+- **改法**：要么过滤 `event.entityType() == POST`，要么注释里明确"任何被赞内容都计数"
+
+#### 11. `PostScoreRefreshJob` 用 `record` 实现 Job
+
+```java
+public record PostScoreRefreshJob(...) implements Job
+```
+- record 是不可变值对象，但 Job 是有副作用的服务执行单元
+- 概念错位 — 应该是普通 `class`
+
+---
+
+### 🟡 P2 — 可接受（简历项目暂不修；面试时能解释即可）
+
+#### 12. shared 模块过载（"shared kernel"边界爆炸）
+
+```
+shared/
+├── aop/ServiceLogAspect.java          ← 切到所有 Service
+├── captcha/CaptchaContext + Verifier  ← captcha 是具体业务
+├── config/MybatisPlusConfig + RedisConfig
+├── handler/GlobalExceptionHandler.java ← Web 层组件
+├── messaging/Event + EventProducer    ← Kafka 集成
+├── security/RestAccessDeniedHandler   ← Spring Security 适配
+├── utils/SensitiveFilter              ← 敏感词是领域规则
+└── ...
+```
+- 严格 DDD 的 shared kernel 只装"被多个 BC 共享的纯领域概念"（值对象、领域事件）
+- 现在的 shared 实际上是"一切跨模块复用代码的垃圾桶"
+- 真要修需要拆 4-5 个 starter 模块（`web-starter`、`messaging-starter`、`security-starter`、`captcha`），工作量大、收益小
+
+#### 13. Kafka `Event` 类型不安全
+
+`shared/messaging/Event.java`：
+```java
+private String topic;             // 字符串散落（用常量 mitigate）
+private Map<String, Object> data; // 任意 K-V，没有 schema
+```
+- 跨进程 Kafka 用这种"散装事件"，靠 topic 字符串路由 + HashMap 携带 payload
+- 比起本地 `EntityLikedEvent` 这种 record 弱很多
+- 改成每个 topic 一个 record（`PublishPostEvent` / `LikeKafkaEvent` / `FollowKafkaEvent`）会更清晰
+
+#### 14. 死代码 / `LoginTicket` 残留
+
+- `UserServiceImpl` 里 3 处 `// loginTicketMapper.xxx(...)` 注释代码（`logout` / `getLoginTicket` / `updateAvatar`）
+- `LoginTicket` 类在 `user/domain/`，但它已经是 Redis 缓存对象，不是领域实体 → 应挪到 `user/application/dto/` 或 `user/infrastructure/cache/`
+- `User.activationCode` 字段：一次性用完后永久挂在主表里，可考虑挪走
+
+#### 15. 事务边界不一致
+
+| 方法 | `@Transactional` | 评价 |
+|---|---|---|
+| `UserServiceImpl.register` | ✅ | 正确（多表写入） |
+| `UserServiceImpl.activation` / `updatePassword` | ❌ | 单条 update，可不要 |
+| `DiscussPostServiceImpl.insertDiscussPost` | ❌ | 单写，可不要 |
+| `CommentServiceImpl.addComment` | ✅ READ_COMMITTED | 正确（评论 + 帖子计数） |
+| `MessageServiceImpl.addMessage` | ❌ | 单写，可不要 |
+| `LikeServiceImpl.like` / `FollowServiceImpl.follow` | ❌ | Redis Lua + 发本地事件，需要单独考虑（事件失败不会回滚 Redis） |
+
+- 现状能跑，缺一份"何时加 @Transactional"的规约
+
+#### 16. `SecurityUtil.getCurrentUser()` 静态方法
+
+`user/infrastructure/utils/SecurityUtil.java` 用静态 `SecurityContextHolder.getContext()...` 取当前用户。
+- 单元测试需要 mock 静态调用
+- DDD 风格倾向于注入 `CurrentUserProvider` 接口
+- 但 Spring Security 标配，简历项目能接受
+
+---
+
+### 优化路线图
+
+#### Phase R1 — 把硬伤先收拾掉（高 ROI，2-3 天）
+
+| # | 任务 | 工作量 |
+|---|---|---|
+| R1.1 | `User` 拆成 POJO + `UserDetailsAdapter`（infra），切断 domain → Spring Security 依赖 | 半天 |
+| R1.2 | `DiscussPost` 拆成 `post.DiscussPost`（MyBatis）+ `search.SearchablePost`（ES，独立 mapper），search 模块新建 domain 层 | 一天 |
+| R1.3 | 三个 `XxxServiceImpl` 不再 `extends ServiceImpl<Mapper, Entity>`，需要的 Mapper 方法接口里显式声明 | 半天到一天 |
+| R1.4 | `FollowController` 不再注 `UserStatisticsMapper`，加 `UserService.getStatistics(id)` | 小 |
+| R1.5 | `PostController/LikeController/CommentController` 不直接操作 Redis，封到 `DiscussPostService.bumpScore(postId)` 之类 | 小 |
+
+**R1 TODO（截至 2026-05-07）**
+
+- [x] **R1.1** `User` 已拆为纯 POJO；`UserDetailsAdapter` 已建在 `user/infrastructure/security/`。  
+- [~] **R1.2** `SearchablePost` 类已创建、`DiscussPost` 已去 ES 注解，但 **repository 层仍全程操作 `DiscussPost`**（`DiscussPostRepository` / `DiscussPostRepositoryImpl` / `ElasticSearchServiceImpl` 均未切到 `SearchablePost`），高亮仍回写 domain 字段。  
+- [ ] **R1.3** 三个 `ServiceImpl` 仍 `extends ServiceImpl`（`DiscussPostServiceImpl`、`CommentServiceImpl`、`UserServiceImpl`）。  
+- [ ] **R1.4** `FollowController` 仍直接注入 `UserStatisticsMapper`；`UserService` 尚无 `getStatistics(id)` 方法。（`UserController` 也直接注了 `UserStatisticsMapper`。）  
+- [ ] **R1.5** `PostController` / `LikeController` / `CommentController` 仍直接操作 `RedisTemplate` 刷 score 队列，未封装到 `DiscussPostService`。
+
+#### Phase R2 — Domain 模型充血化（DDD 加分项，1-2 天）
+
+| # | 任务 |
+|---|---|
+| R2.1 | `User` / `DiscussPost` / `Comment` 加领域行为方法（`activate` / `markAsTop` / `softDelete` / `isDeleted` 等）；Service 改成 `entity.activate(code); userMapper.update(entity)` |
+| R2.2 | 抽 `ContentSanitizer` 领域服务，HTML 转义 + 敏感词过滤三处复用统一 |
+| R2.3 | 算分公式从 `PostScoreRefreshJob` 收进 `DiscussPost.calculateScore(...)` 静态方法 |
+| R2.4 | 跨模块 DTO 不再持有他人 domain 实体：定义 `AuthorRef(id, username, avatar)` 这种局部 ValueObject |
+
+#### Phase R3 — 模块结构与 Read Model（学习价值高，1-2 天）
+
+| # | 任务 |
+|---|---|
+| R3.1 | search 模块建 `domain/SearchablePost` + `application/dto/SearchResult`，搜索高亮不再回写 post 实体 |
+| R3.2 | user/domain 包结构统一：`User` / `LoginTicket` / `UserStatistics` 都进 `domain/entity/`（或都不进） |
+| R3.3 | system 包结构统一：`application/service/{DataService, impl/...}` |
+| R3.4 | `LoginTicket` 挪到 `user/application/dto/` 或 `user/infrastructure/cache/`，从 domain 删除 |
+| R3.5 | `PostScoreRefreshJob` 从 record 改 class |
+| R3.6 | `UserStatsEventListener.onLiked` 明确语义（要么过滤 entityType，要么注释说明） |
+
+#### Phase R4 — 可选（简历项目暂时不做）
+
+- shared 模块拆分（→ web-starter、messaging-starter、security-starter、captcha 模块）
+- Kafka `Event` 类按 topic 拆成多个 record
+- 事务注解策略统一（写一份 `@Transactional` 规约）
+- 替换 `SecurityUtil` 静态方法为注入式 `CurrentUserProvider`
+- PageHelper 完全迁出，统一用 MyBatis Plus 分页
+
