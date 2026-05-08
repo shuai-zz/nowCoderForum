@@ -67,13 +67,13 @@ public class UserServiceImpl
 
     @Override
     @Transactional
-    public void register(User user) {
-        if (user == null) {
+    public void register(User rawUser) {
+        if (rawUser == null) {
             throw new IllegalArgumentException("Parameter cannot be null");
         }
-        String username = user.getUsername();
-        String password = user.getPassword();
-        String email = user.getEmail();
+        String username = rawUser.getUsername();
+        String password = rawUser.getPassword();
+        String email = rawUser.getEmail();
 
         if (StringUtils.isBlank(username)) {
             throw new ValidationException("Username cannot be empty");
@@ -95,13 +95,18 @@ public class UserServiceImpl
             throw new ValidationException("This email already exists");
         }
 
-        user.setSalt(ForumUtil.generateUuid().substring(0, 5));
-        user.setPassword(ForumUtil.md5(password + user.getSalt()));
-        user.setType(0);
-        user.setStatus(0);
-        user.setActivationCode(ForumUtil.generateUuid());
-        user.setAvatarUrl(String.format("https://images.nowcoder.com/head/%dt.png", new Random().nextInt(1000)));
-        user.setCreateTime(new Date());
+        String salt = ForumUtil.generateUuid().substring(0, 5);
+        User user = User.builder()
+                .username(username)
+                .password(ForumUtil.md5(password + salt))
+                .salt(salt)
+                .email(email)
+                .type(User.TYPE_USER)
+                .status(User.STATUS_INACTIVE)
+                .activationCode(ForumUtil.generateUuid())
+                .avatarUrl(String.format("https://images.nowcoder.com/head/%dt.png", new Random().nextInt(1000)))
+                .createTime(new Date())
+                .build();
         userMapper.insert(user);
 
         // 同步初始化统计读模型行：保证后续 EntityLikedEvent / FollowEvent
@@ -125,13 +130,12 @@ public class UserServiceImpl
     @Override
     public void activation(int userId, String code) {
         User user = this.getById(userId);
-        if (user.getStatus() == 1) {
-            throw new ValidationException("Account already activated");
-        }
-        if (!Objects.equals(user.getActivationCode(), code)) {
+
+        if(!user.canActivateWith(code)){
             throw new ValidationException("Invalid activation code");
         }
-        userMapper.updateStatus(userId, 1);
+        user.activate();
+        userMapper.updateById(user);
         clearCache(userId);
     }
 
@@ -148,7 +152,7 @@ public class UserServiceImpl
         if (user == null) {
             throw new AuthException("This username does not exist");
         }
-        if (user.getStatus() == 0) {
+        if (!user.isActivated()) {
             throw new AuthException("This account has not been activated");
         }
 

@@ -3,7 +3,10 @@ package com.example.post.domain.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.example.shared.exception.ValidationException;
 import lombok.Builder;
+import lombok.Data;
+import lombok.Getter;
 
 import java.util.Date;
 
@@ -16,6 +19,7 @@ import java.util.Date;
  */
 @TableName("discuss_post")
 @Builder
+@Getter
 public class DiscussPost {
     @TableId(type = IdType.AUTO)
     private int id;
@@ -29,99 +33,42 @@ public class DiscussPost {
     private int likeCount;
     private double score;
 
-    public int getId() {
-        return id;
-    }
+    public static final int TYPE_NORMAL = 0;
+    public static final int TYPE_TOP = 1;
+    public static final int STATUS_NORMAL = 0;
+    public static final int STATUS_WONDERFUL = 1;
+    public static final int STATUS_DELETED = 2;
 
-    public void setId(int id) {
-        this.id = id;
-    }
 
-    public int getUserId() {
-        return userId;
-    }
 
-    public void setUserId(int userId) {
-        this.userId = userId;
+    public void markAsTop(){
+        this.type = TYPE_TOP;
     }
-
-    public String getTitle() {
-        return title;
+    public void markAsWonderful(){
+        this.status = STATUS_WONDERFUL;
     }
-
-    public void setTitle(String title) {
-        this.title = title;
+    public void softDelete(){
+        this.status = STATUS_DELETED;
     }
-
-    public String getContent() {
-        return content;
+    public boolean isDeleted(){
+        return status == STATUS_DELETED;
     }
-
-    public void setContent(String content) {
-        this.content = content;
+    public boolean isTop(){
+        return type == TYPE_TOP;
     }
-
-    public int getType() {
-        return type;
+    public boolean isWonderful(){
+        return status == STATUS_WONDERFUL;
     }
-
-    public void setType(int type) {
-        this.type = type;
+    public void refreshCommentCount(int count){
+        if(count < 0){
+            throw new ValidationException("comment count cannot be negative");
+        }
+        this.commentCount = count;
     }
-
-    public int getStatus() {
-        return status;
-    }
-
-    public void setStatus(int status) {
-        this.status = status;
-    }
-
-    public Date getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(Date createTime) {
-        this.createTime = createTime;
-    }
-
-    public int getCommentCount() {
-        return commentCount;
-    }
-
-    public void setCommentCount(int commentCount) {
-        this.commentCount = commentCount;
-    }
-
-    public int getLikeCount() {
-        return likeCount;
-    }
-
-    public void setLikeCount(int likeCount) {
-        this.likeCount = likeCount;
-    }
-
-    public double getScore() {
-        return score;
-    }
-
-    public void setScore(double score) {
+    public void updateScore(double score){
+        if(score < 0){
+            throw new ValidationException("score cannot be negative");
+        }
         this.score = score;
-    }
-
-    @Override
-    public String toString() {
-        return "DiscussPost{" +
-                "id=" + id +
-                ", userId=" + userId +
-                ", title='" + title + '\'' +
-                ", content='" + content + '\'' +
-                ", type=" + type +
-                ", status=" + status +
-                ", createTime=" + createTime +
-                ", commentCount=" + commentCount +
-                ", likeCount=" + likeCount +
-                ", score=" + score +
-                '}';
     }
 }

@@ -51,17 +51,27 @@ public class CommentServiceImpl implements CommentService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED, propagation = Propagation.REQUIRED)
     @Override
-    public int addComment(Comment comment) {
-        if (comment == null) {
+    public int addComment(Comment rawComment) {
+        if (rawComment == null) {
             throw new IllegalArgumentException("parameter cannot be null");
         }
-        comment.setContent(HtmlUtils.htmlEscape(comment.getContent()));
-        comment.setContent(sensitiveFilter.filter(comment.getContent()));
+        String content = sensitiveFilter.filter(HtmlUtils.htmlEscape(rawComment.getContent()));
+
+        Comment comment = Comment.builder()
+                .userId(rawComment.getUserId())
+                .entityType(rawComment.getEntityType())
+                .entityId(rawComment.getEntityId())
+                .targetId(rawComment.getTargetId())
+                .content(content)
+                .status(rawComment.getStatus())
+                .createTime(rawComment.getCreateTime())
+                .build();
+
         int rows = commentMapper.insert(comment);
 
-        if (comment.getEntityType() == ForumConstant.ENTITY_TYPE_POST) {
+        if (comment.isOnPost()) {
             int count = findCommentCount(comment.getEntityType(), comment.getEntityId());
-            discussPostService.updateCommentCount(comment.getEntityId(), count);
+            discussPostService.refreshCommentCount(comment.getEntityId(), count);
         }
         return rows;
     }

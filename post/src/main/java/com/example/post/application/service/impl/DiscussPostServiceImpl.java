@@ -59,39 +59,63 @@ public class DiscussPostServiceImpl
         if (discussPost == null) {
             throw new IllegalArgumentException("post cannot be null");
         }
-        // 转义HTML标记
-        discussPost.setTitle(HtmlUtils.htmlEscape(discussPost.getTitle()));
-        discussPost.setContent(HtmlUtils.htmlEscape(discussPost.getContent()));
+        // 转译HTML && 过滤敏感词
+        String title = sensitiveFilter.filter(HtmlUtils.htmlEscape(discussPost.getTitle()));
+        String content = sensitiveFilter.filter(HtmlUtils.htmlEscape(discussPost.getContent()));
 
-        // 过滤敏感词
-        discussPost.setTitle(sensitiveFilter.filter(discussPost.getTitle()));
-        discussPost.setContent(sensitiveFilter.filter(discussPost.getContent()));
+        DiscussPost post = DiscussPost.builder()
+                .userId(discussPost.getUserId())
+                .title(title)
+                .content(content)
+                .type(discussPost.getType())
+                .status(discussPost.getStatus())
+                .createTime(discussPost.getCreateTime())
+                .commentCount(discussPost.getCommentCount())
+                .likeCount(discussPost.getLikeCount())
+                .score(discussPost.getScore())
+                .build();
 
 
-        return discussPostMapper.insert(discussPost);
-    }
-
-
-    @Override
-    public int updateCommentCount(int entityId, int count) {
-        return discussPostMapper.updateCommentCount(entityId, count);
-    }
-
-    @Override
-    public int updateType(int entityId, int type) {
-        return discussPostMapper.updateType(entityId, type);
+        return discussPostMapper.insert(post);
     }
 
     @Override
-    public int updateStatus(int entityId, int status) {
-        return discussPostMapper.updateStatus(entityId, status);
+    public void markAsTop(DiscussPost post) {
+        post.markAsTop();
+        discussPostMapper.updateById(post);
     }
 
+    @Override
+    public void markAsWonderful(DiscussPost post) {
+        post.markAsWonderful();
+        discussPostMapper.updateById(post);
+    }
+
+    @Override
+    public void softDelete(DiscussPost post) {
+        post.softDelete();
+        discussPostMapper.updateById(post);
+    }
+
+    @Override
+    public void refreshCommentCount(int postId, int count) {
+        DiscussPost discussPost = discussPostMapper.selectById(postId);
+        discussPost.refreshCommentCount(count);
+        discussPostMapper.updateById(discussPost);
+    }
 
     @Override
     public void updateScore(int postId, double score) {
-        discussPostMapper.updateScore(postId, score);
+        DiscussPost discussPost = discussPostMapper.selectById(postId);
+        discussPost.updateScore(score);
+        discussPostMapper.updateById(discussPost);
     }
+
+    @Override
+    public DiscussPost getRawPost(int postId) {
+        return discussPostMapper.selectById(postId);
+    }
+
 
     @Override
     public void markForScoreRefresh(int postId) {

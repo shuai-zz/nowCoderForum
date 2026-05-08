@@ -38,9 +38,6 @@ import static com.example.shared.constant.ForumConstant.*;
 public class PostController {
 
     private static final int ALL_USERS = 0;
-    private static final int POST_TYPE_TOP = 1;
-    private static final int POST_STATUS_WONDERFUL = 1;
-    private static final int POST_STATUS_DELETED = 2;
 
     private final DiscussPostService discussPostService;
     private final EventProducer eventProducer;
@@ -101,8 +98,8 @@ public class PostController {
     @Operation(summary = "置顶（moderator）")
     @PatchMapping("/{id}/top")
     public Result<Void> top(@AuthenticationPrincipal User me, @PathVariable int id) {
-        requirePostExists(id, me.getId());
-        discussPostService.updateType(id, POST_TYPE_TOP);
+        DiscussPost post = requirePostExists(id);
+        discussPostService.markAsTop(post);
 
         eventProducer.fireEvent(new Event()
                 .setTopic(TOPIC_PUBLISH)
@@ -115,8 +112,8 @@ public class PostController {
     @Operation(summary = "加精（moderator）")
     @PatchMapping("/{id}/wonderful")
     public Result<Void> wonderful(@AuthenticationPrincipal User me, @PathVariable int id) {
-        requirePostExists(id, me.getId());
-        discussPostService.updateStatus(id, POST_STATUS_WONDERFUL);
+        DiscussPost post = requirePostExists(id);
+        discussPostService.markAsWonderful(post);
 
         eventProducer.fireEvent(new Event()
                 .setTopic(TOPIC_PUBLISH)
@@ -130,8 +127,8 @@ public class PostController {
     @Operation(summary = "删除（admin，软删）")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@AuthenticationPrincipal User me, @PathVariable int id) {
-        requirePostExists(id,me.getId());
-        discussPostService.updateStatus(id, POST_STATUS_DELETED);
+        DiscussPost post = requirePostExists(id);
+        discussPostService.softDelete(post);
 
         eventProducer.fireEvent(new Event()
                 .setTopic(TOPIC_DELETE)
@@ -143,9 +140,11 @@ public class PostController {
 
     // ---- helpers ----
 
-    private void requirePostExists(int id, int currentUserId) {
-        if (discussPostService.findDiscussPostById(id, currentUserId).discussPost() == null) {
+    private DiscussPost requirePostExists(int id) {
+        DiscussPost post = discussPostService.getRawPost(id);
+        if (post == null || post.isDeleted()) {
             throw new ResourceNotFoundException("Post not found: " + id);
         }
+        return post;
     }
 }

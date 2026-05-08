@@ -3,17 +3,22 @@ package com.example.interaction.domain.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.example.shared.constant.ForumConstant;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
 /**
  * @author zhaoshuai
  */
-@Data
-@TableName("comment")
+@Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@TableName("comment")
 public class Comment {
 
     @TableId(type = IdType.AUTO)
@@ -36,5 +41,13 @@ public class Comment {
     private int status;
 
     private Date createTime;
+
+    public boolean isOnPost() {
+        return entityType == ForumConstant.ENTITY_TYPE_POST;
+    }
+
+    public boolean isReply() {
+        return entityType == ForumConstant.ENTITY_TYPE_COMMENT;
+    }
 
 }

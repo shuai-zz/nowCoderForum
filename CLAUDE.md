@@ -390,10 +390,17 @@ private Map<String, Object> data; // 任意 K-V，没有 schema
 **R1 TODO（截至 2026-05-07）**
 
 - [x] **R1.1** `User` 已拆为纯 POJO；`UserDetailsAdapter` 已建在 `user/infrastructure/security/`。  
-- [~] **R1.2** `SearchablePost` 类已创建、`DiscussPost` 已去 ES 注解，但 **repository 层仍全程操作 `DiscussPost`**（`DiscussPostRepository` / `DiscussPostRepositoryImpl` / `ElasticSearchServiceImpl` 均未切到 `SearchablePost`），高亮仍回写 domain 字段。  
-- [ ] **R1.3** 三个 `ServiceImpl` 仍 `extends ServiceImpl`（`DiscussPostServiceImpl`、`CommentServiceImpl`、`UserServiceImpl`）。  
-- [ ] **R1.4** `FollowController` 仍直接注入 `UserStatisticsMapper`；`UserService` 尚无 `getStatistics(id)` 方法。（`UserController` 也直接注了 `UserStatisticsMapper`。）  
-- [ ] **R1.5** `PostController` / `LikeController` / `CommentController` 仍直接操作 `RedisTemplate` 刷 score 队列，未封装到 `DiscussPostService`。
+- [x] **R1.2** `SearchablePost` 类已创建、`DiscussPost` 已去 ES 注解，但 **repository 层仍全程操作 `DiscussPost`**（`DiscussPostRepository` / `DiscussPostRepositoryImpl` / `ElasticSearchServiceImpl` 均未切到 `SearchablePost`），高亮仍回写 domain 字段。  
+- [x] **R1.3** 三个 `ServiceImpl` 仍 `extends ServiceImpl`（`DiscussPostServiceImpl`、`CommentServiceImpl`、`UserServiceImpl`）。  
+- [x] **R1.4** `FollowController` 仍直接注入 `UserStatisticsMapper`；`UserService` 尚无 `getStatistics(id)` 方法。（`UserController` 也直接注了 `UserStatisticsMapper`。）  
+- [x] **R1.5** `PostController` / `LikeController` / `CommentController` 仍直接操作 `RedisTemplate` 刷 score 队列，未封装到 `DiscussPostService`。
+
+**R2 TODO**
+
+- [x] **R2.1** 给 `User` / `DiscussPost` / `Comment` 加领域行为方法：`User.activate(code)`、`DiscussPost.markAsTop()` / `markAsWonderful()` / `softDelete()` / `isDeleted()`、`Comment.isReply()` / `isOnPost()`；Service 层改为 `entity.activate(code); mapper.updateById(entity)` 模式
+- [ ] **R2.2** 抽取 `ContentSanitizer` 领域服务，统一 HTML 转义 + 敏感词过滤；`DiscussPostServiceImpl` / `CommentServiceImpl` / `MessageServiceImpl` 三处重复逻辑收编
+- [ ] **R2.3** 算分公式从 `PostScoreRefreshJob` 收进 `DiscussPost.calculateScore(long likeCount, long commentCount, Date createTime, Date epoch)` 静态方法
+- [ ] **R2.4** 跨模块 DTO 不再持有他人 domain 实体：定义 `AuthorRef(id, username, avatar)` ValueObject，替换 `PostItem` / `FollowListItem` / `MessageItem` 中的 `User` 字段
 
 #### Phase R2 — Domain 模型充血化（DDD 加分项，1-2 天）
 

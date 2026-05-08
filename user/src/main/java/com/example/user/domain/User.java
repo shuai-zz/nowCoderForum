@@ -3,15 +3,22 @@ package com.example.user.domain;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.example.shared.exception.ValidationException;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
 /**
  * @author 23211
  */
-@TableName("user")
+@Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@TableName("user")
 public class User {
     @TableId(type = IdType.AUTO)
     private int id;
@@ -22,105 +29,44 @@ public class User {
     private String email;
     // 0-普通用户；1-超级管理员；2-版主
     private int type;
+    // 0-未激活；1-已激活
     private int status;
     // 账户激活码
     private String activationCode;
     private String avatarUrl;
     private Date createTime;
 
-    public User() {
+    // 用户类型
+    public static final int TYPE_USER = 0;
+    public static final int TYPE_ADMIN = 1;
+    public static final int TYPE_MODERATOR = 2;
+    public static final int STATUS_INACTIVE = 0;
+    public static final int STATUS_ACTIVATED = 1;
+
+    public boolean isActivated() {
+        return this.status == STATUS_ACTIVATED;
     }
 
-    public User(int id, String username, String password, String salt, String email, int type, int status, String activationCode, String avatarUrl, Date createTime) {
-        this.id = id;
-        this.username = username;
-        this.password = password;
-        this.salt = salt;
-        this.email = email;
-        this.type = type;
-        this.status = status;
-        this.activationCode = activationCode;
-        this.avatarUrl = avatarUrl;
-        this.createTime = createTime;
+    public boolean canActivateWith(String code) {
+        return !isActivated() && activationCode.equals(code);
     }
 
-    public int getId() {
-        return id;
+    public void activate() {
+        if (isActivated()) {
+            throw new ValidationException("Account already activated");
+        }
+        this.status = STATUS_ACTIVATED;
     }
 
-    public void setId(int id) {
-        this.id = id;
+    public boolean isAdmin() {
+        return this.type == TYPE_ADMIN;
     }
 
-    public String getUsername() {
-        return username;
+    public boolean isModerator() {
+        return this.type == TYPE_MODERATOR;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getSalt() {
-        return salt;
-    }
-
-    public void setSalt(String salt) {
-        this.salt = salt;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public int getType() {
-        return type;
-    }
-
-    public void setType(int type) {
-        this.type = type;
-    }
-
-    public int getStatus() {
-        return status;
-    }
-
-    public void setStatus(int status) {
-        this.status = status;
-    }
-
-    public String getActivationCode() {
-        return activationCode;
-    }
-
-    public void setActivationCode(String activationCode) {
-        this.activationCode = activationCode;
-    }
-
-    public String getAvatarUrl() {
-        return avatarUrl;
-    }
-
-    public void setAvatarUrl(String avatarUrl) {
-        this.avatarUrl = avatarUrl;
-    }
-
-    public Date getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(Date createTime) {
-        this.createTime = createTime;
+    public boolean canTopOrFeature() {
+        return isAdmin() || isModerator();
     }
 }

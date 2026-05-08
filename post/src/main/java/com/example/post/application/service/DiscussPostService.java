@@ -15,12 +15,16 @@ public interface DiscussPostService{
 
     PostItem findDiscussPostById(int discussPostId, int userId);
 
-    int updateCommentCount(int entityId, int count);
-    int updateType(int entityId, int type);
-    int updateStatus(int entityId, int status);
-
+    void markAsTop(DiscussPost post);
+    void markAsWonderful(DiscussPost post);
+    void softDelete(DiscussPost post);
+    void refreshCommentCount(int postId, int count);
     void updateScore(int postId, double score);
 
+    /**
+     * 根据 ID 查询帖子（裸查，不连带作者信息）。
+     */
+    DiscussPost getRawPost(int postId);
     /**
      * 标记帖子需要重新计算分数（加入 Quartz 刷新队列）。
      */

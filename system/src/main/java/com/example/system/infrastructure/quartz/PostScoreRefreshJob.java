@@ -3,6 +3,7 @@ package com.example.system.infrastructure.quartz;
 import com.example.interaction.application.service.LikeService;
 import com.example.post.application.service.DiscussPostService;
 import com.example.post.domain.entity.DiscussPost;
+import com.example.post.infrastructure.mapper.DiscussPostMapper;
 import com.example.search.application.service.ElasticSearchService;
 import com.example.shared.utils.RedisKeyUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -58,7 +59,7 @@ public record PostScoreRefreshJob(RedisTemplate<String, Object> redisTemplate, D
             return;
         }
         // 是否精华
-        boolean wonderful = post.getStatus() == 1;
+        boolean wonderful = post.isWonderful();
         // 评论数量
         int commentCount = post.getCommentCount();
         // 点赞数量
@@ -71,7 +72,7 @@ public record PostScoreRefreshJob(RedisTemplate<String, Object> redisTemplate, D
         // 更新帖子分数
         discussPostService.updateScore(postId, score);
         // 同步搜索数据
-        post.setScore(score);
+        post.updateScore(score);
         elasticSearchService.saveDiscussPost(post);
     }
 }

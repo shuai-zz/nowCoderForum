@@ -20,11 +20,6 @@ public interface UserMapper extends BaseMapper<User> {
     @Select("select * from user where email=#{email}")
     User selectByEmail(String email);
 
-    default int updateStatus(int id, int status) {
-        return update(null, Wrappers.<User>lambdaUpdate()
-                .set(User::getStatus, status)
-                .eq(User::getId, id));
-    }
 
     default int updateAvatar(int id, String avatarUrl) {
         return update(null, Wrappers.<User>lambdaUpdate()
