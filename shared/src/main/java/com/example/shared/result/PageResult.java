@@ -3,7 +3,7 @@ package com.example.shared.result;
 import java.util.List;
 
 /**
- * 统一分页响应。适配 PageHelper（过渡期）和 MyBatis Plus IPage（P2 后）。
+ * 统一分页响应。基于 MyBatis Plus IPage 构建。
  */
 public record PageResult<T>(
         List<T> list,
@@ -12,16 +12,6 @@ public record PageResult<T>(
         int pageSize,
         int pages
 ) {
-
-//    public static <T> PageResult<T> of(PageInfo<T> p) {
-//        return new PageResult<>(
-//                p.getList(),
-//                p.getTotal(),
-//                p.getPageNum(),
-//                p.getPageSize(),
-//                p.getPages()
-//        );
-//    }
 
     public static <T> PageResult<T> of(List<T> list, long total, int pageNum, int pageSize) {
         int pages = pageSize == 0 ? 0 : (int) ((total + pageSize - 1) / pageSize);

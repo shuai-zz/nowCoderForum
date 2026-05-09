@@ -131,6 +131,27 @@ Read-side listeners update their own local tables:
 - **MyBatis Plus `type-aliases-package`** (root `application.yaml`): `com.example.user.domain,com.example.post.domain.entity,com.example.interaction.domain.entity,com.example.message.domain.entity`. Add new modules' entity packages here when introducing them.
 - The `NowCoderApplication` `@PostConstruct` sets `es.set.netty.runtime.available.processors=false` to avoid a Netty/Elasticsearch startup conflict.
 
+### Transactional Policy
+
+> 本规约统一 `@Transactional` 的使用标准，避免"该加没加"和"不该加乱加"。
+
+| 场景 | 是否加 `@Transactional` | 说明 |
+|---|---|---|
+| **单条单表写入**（update by id / insert one row） | ❌ 不加 | Spring Data 默认 auto-commit 已足够；加事务反而增加开销 |
+| **同方法内多表写入**（user + user_statistics） | ✅ 必须加 | 保证原子性，任一失败全回滚 |
+| **同方法内"写+读再写"**（comment insert + post comment_count update） | ✅ 必须加 | 并发下非事务可能导致计数不一致；comment 用 `READ_COMMITTED` 降低锁竞争 |
+| **纯 Redis 操作**（like / follow 的 ZSet/Set 操作） | ❌ 不加 | Redis 无 ACID 事务参与；通过 Lua 脚本保证原子性 |
+| **Redis 操作 + 发本地事件**（`ApplicationEventPublisher`） | ❌ 不加 | 事件失败不会回滚 Redis，这是已知设计选择（最终一致性） |
+| **纯查询** | ❌ 不加 | 无写操作，事务无意义 |
+
+**当前符合规约的方法：**
+- `UserServiceImpl.register` — `@Transactional`（user + user_statistics 双表写入）✅
+- `CommentServiceImpl.addComment` — `@Transactional(READ_COMMITTED)`（comment insert + discuss_post.comment_count update）✅
+- `UserServiceImpl.activation` / `updatePassword` — 无注解（单条 update）✅
+- `DiscussPostServiceImpl.insertDiscussPost` — 无注解（单写）✅
+- `MessageServiceImpl.addMessage` — 无注解（单写）✅
+- `LikeServiceImpl.like` / `FollowServiceImpl.follow` — 无注解（Redis + 事件）✅
+
 ## Module Package Layout
 
 每个模块内部按 DDD 四层组织：
@@ -435,7 +456,37 @@ private Map<String, Object> data; // 任意 K-V，没有 schema
 
 - shared 模块拆分（→ web-starter、messaging-starter、security-starter、captcha 模块）
 - Kafka `Event` 类按 topic 拆成多个 record
-- 事务注解策略统一（写一份 `@Transactional` 规约）
+- ~~事务注解策略统一（写一份 `@Transactional` 规约）~~（已在 N1.2 完成：规约写入 AGENTS.md § Transactional Policy）
 - ~~替换 `SecurityUtil` 静态方法为注入式 `CurrentUserProvider`~~（已在 R3.2 完成：删除 `SecurityUtil`，统一用 `@AuthenticationPrincipal`）
-- PageHelper 完全迁出，统一用 MyBatis Plus 分页
+- ~~PageHelper 完全迁出，统一用 MyBatis Plus 分页~~（已在 N1.1 完成：删除 pom 依赖、yaml 配置、PageResult 注释）
 
+
+---
+
+### 后续任务规划（N-Series）
+
+> R1~R3 + N1.1/N1.2 已完成，以下按优先级排序。
+
+**N1 TODO（技术清理，已完成）**
+
+- [x] **N1.1** 彻底移除 PageHelper：删除根 `pom.xml` dependencyManagement + `application.yaml` 配置 + `PageResult` 注释与死代码
+- [x] **N1.2** 事务注解策略统一：规约写入 AGENTS.md § Transactional Policy，明确"单写不加、多写必加、Redis 不加"
+
+**N2 TODO（代码质量）**
+
+- [ ] **N2.1** 补充领域方法单元测试（`User.activate()` / `DiscussPost.calculateScore()` / `Comment.isOnPost()` 等）
+- [ ] **N2.2** 死代码清理：检查 `UserServiceImpl` 是否还有 `// loginTicketMapper.xxx` 等注释残留
+- [ ] **N2.3** 统一包结构最终检查：确认所有模块 `domain/entity/` 与 `application/service/` 子包已对齐
+
+**N3 TODO（架构级别 — 工作量大，简历项目暂缓）**
+
+- [ ] **N3.1** shared 模块拆分 → `web-starter` / `messaging-starter` / `security-starter` / `captcha` 独立模块
+- [ ] **N3.2** Kafka `Event` 类型安全化：按 topic 拆成 `PublishPostEvent` / `LikeKafkaEvent` / `FollowKafkaEvent` 等 record
+- [ ] **N3.3** Quartz `memory` → `jdbc`：建 `qrtz_*` 表，配合 infra 仓库部署
+- [ ] **N3.4** `system` 模块解耦：Quartz job 目前调用了几乎所有业务 service，拆微服务时需改为异步事件
+
+**N4 TODO（非代码 — 面试准备）**
+
+- [ ] **N4.1** 更新简历：把 DDD 改造（贫血→充血、去框架污染、领域事件解耦、SearchResult Read Model）写进项目亮点
+- [ ] **N4.2** 准备面试话术：每个改造点的 Why（为什么要拆 UserDetails？为什么不用 extends ServiceImpl？Read Model 解决什么问题？）
+- [ ] **N4.3** 技术博客：《从 Transaction Script 到 Rich Domain Model 的实践》或类似主题

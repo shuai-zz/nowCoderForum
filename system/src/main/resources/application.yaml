@@ -108,11 +108,6 @@ springdoc:
     tags-sorter: alpha
     operations-sorter: alpha
 
-# PageHelper（过渡期保留，P2 结束后删除）
-pagehelper:
-  helper-dialect: mysql
-  reasonable: true
-
 # Actuator
 management:
   endpoints:
