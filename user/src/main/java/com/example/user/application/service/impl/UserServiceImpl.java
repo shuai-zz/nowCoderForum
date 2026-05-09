@@ -176,7 +176,6 @@ public class UserServiceImpl
 
     @Override
     public void logout(String ticket) {
-//        loginTicketMapper.updateStatus(ticket, 1);
         String redisKey = RedisKeyUtil.getTicketKey(ticket);
         LoginTicket loginTicket = (LoginTicket) redisTemplate.opsForValue().get(redisKey);
         if (loginTicket != null) {
@@ -189,14 +188,12 @@ public class UserServiceImpl
 
     @Override
     public LoginTicket getLoginTicket(String ticket) {
-//        return loginTicketMapper.selectByTicket(ticket);
         String redisKey = RedisKeyUtil.getTicketKey(ticket);
         return (LoginTicket) redisTemplate.opsForValue().get(redisKey);
     }
 
     @Override
     public int updateAvatar(int id, String avatarUrl) {
-//        return baseMapper.updateAvatar(id, avatarUrl);
         int rows = userMapper.updateAvatar(id, avatarUrl);
         clearCache(id);
         return rows;

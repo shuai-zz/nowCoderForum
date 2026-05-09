@@ -53,7 +53,6 @@ public class PostScoreRefreshJob implements Job {
     }
 
     private void refresh(int postId) {
-//        DiscussPost post = discussPostService.findDiscussPostById(postId, 0).discussPost();
         DiscussPost post = discussPostService.getRawPost(postId);
         if (post == null) {
             log.error("该帖子不存在：id={}", postId);

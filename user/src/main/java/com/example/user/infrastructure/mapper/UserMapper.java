@@ -17,9 +17,6 @@ public interface UserMapper extends BaseMapper<User> {
     @Select("select * from user where username=#{username}")
     User selectByName(String username);
 
-    @Select("select * from user where email=#{email}")
-    User selectByEmail(String email);
-
 
     default int updateAvatar(int id, String avatarUrl) {
         return update(null, Wrappers.<User>lambdaUpdate()

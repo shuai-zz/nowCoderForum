@@ -87,7 +87,7 @@ server:
 # MyBatis Plus（替换原 mybatis 配置）
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.example.user.domain,com.example.post.domain.entity,com.example.interaction.domain.entity,com.example.message.domain.entity
+  type-aliases-package: com.example.user.domain.entity,com.example.post.domain.entity,com.example.interaction.domain.entity,com.example.message.domain.entity
   configuration:
     use-generated-keys: true
     map-underscore-to-camel-case: true

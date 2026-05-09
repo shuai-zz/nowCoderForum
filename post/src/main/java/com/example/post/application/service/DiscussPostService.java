@@ -1,6 +1,5 @@
 package com.example.post.application.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.post.application.dto.PostItem;
 import com.example.post.domain.entity.DiscussPost;
 import com.example.shared.result.PageData;
