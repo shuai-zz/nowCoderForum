@@ -1,6 +1,6 @@
 package com.example.message.application.dto;
 
-import com.example.user.domain.User;
+import com.example.shared.dto.AuthorRef;
 
 import java.util.Date;
 
@@ -9,8 +9,8 @@ import java.util.Date;
  */
 public record MessageItem(
         int id,
-        User from,
-        User to,
+        AuthorRef from,
+        AuthorRef to,
         String conversationId,
         String content,
         Date createTime,
@@ -20,8 +20,8 @@ public record MessageItem(
 ) {
     public static MessageItem of(
             int id,
-            User from,
-            User to,
+            AuthorRef from,
+            AuthorRef to,
             String conversationId,
             String content,
             Date createTime,

@@ -6,6 +6,7 @@ import com.example.message.application.service.MessageService;
 import com.example.message.domain.entity.Message;
 import com.example.message.infrastructure.mapper.MessageMapper;
 import com.example.shared.domain.ContentSanitizer;
+import com.example.shared.dto.AuthorRef;
 import com.example.shared.result.PageData;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
@@ -44,9 +45,15 @@ public class MessageServiceImpl implements MessageService {
         Map<String, Integer> unreadMap = findUnreadDmCounts(userId, conversationIds);
         List<MessageItem> list = conversations.stream()
                 .map(conv -> {
-                    User from = userMap.get(conv.getFromId());
+                    // 消息发送者
+                    User sender = userMap.get(conv.getFromId());
+                    AuthorRef from = AuthorRef.of(sender.getId(), sender.getUsername(), sender.getAvatarUrl());
+
+                    // 消息接收者
                     int targetId = userId == conv.getFromId() ? conv.getToId() : conv.getFromId();
                     User target = userMap.get(targetId);
+                    AuthorRef to = AuthorRef.of(target.getId(), target.getUsername(), target.getAvatarUrl());
+
                     String conversationId = conv.getConversationId();
                     String content = conv.getContent();
                     Date createTime = conv.getCreateTime();
@@ -56,7 +63,7 @@ public class MessageServiceImpl implements MessageService {
                     return MessageItem.of(
                             conv.getId(),
                             from,
-                            target,
+                            to,
                             conversationId,
                             content,
                             createTime,
@@ -87,18 +94,29 @@ public class MessageServiceImpl implements MessageService {
         Map<Integer, User> toUserMap = userService.listByIds(toIds).stream()
                 .collect(Collectors.toMap(User::getId, u -> u));
 
+
         List<MessageItem> list = messages.stream()
-                .map(message -> MessageItem.of(
-                        message.getId(),
-                        fromUserMap.get(message.getFromId()),
-                        toUserMap.get(message.getToId()),
-                        message.getConversationId(),
-                        message.getContent(),
-                        message.getCreateTime(),
-                        message.getStatus(),
-                        0,
-                        0
-                )).toList();
+                .map(message -> {
+                    // 消息发送者
+                    User sender = fromUserMap.get(message.getFromId());
+                    AuthorRef from = AuthorRef.of(sender.getId(), sender.getUsername(), sender.getAvatarUrl());
+
+                    // 消息接收者
+                    User receiver = toUserMap.get(message.getToId());
+                    AuthorRef to = AuthorRef.of(receiver.getId(), receiver.getUsername(), receiver.getAvatarUrl());
+
+                    return MessageItem.of(
+                            message.getId(),
+                            from,
+                            to,
+                            message.getConversationId(),
+                            message.getContent(),
+                            message.getCreateTime(),
+                            message.getStatus(),
+                            0,
+                            0
+                    );
+                }).toList();
         return new PageData<>(list, page.getTotal());
 
     }
@@ -177,18 +195,25 @@ public class MessageServiceImpl implements MessageService {
         Map<Integer, User> toUserMap = userService.listByIds(toUserIds).stream()
                 .collect(Collectors.toMap(User::getId, u -> u));
         List<MessageItem> list = notices.stream()
-                .map(notice ->
-                        MessageItem.of(notice.getId(),
-                                fromUserMap.get(notice.getFromId()),
-                                toUserMap.get(notice.getToId()),
-                                notice.getConversationId(),
-                                notice.getContent(),
-                                notice.getCreateTime(),
-                                notice.getStatus(),
-                                0,
-                                0
-                        )
-                ).toList();
+                .map(notice -> {
+                    // 消息发送者
+                    User sender = fromUserMap.get(notice.getFromId());
+                    AuthorRef from = AuthorRef.of(sender.getId(), sender.getUsername(), sender.getAvatarUrl());
+                    // 消息接收者
+                    User receiver = toUserMap.get(notice.getToId());
+                    AuthorRef to = AuthorRef.of(receiver.getId(), receiver.getUsername(), receiver.getAvatarUrl());
+
+                    return MessageItem.of(notice.getId(),
+                            from,
+                            to,
+                            notice.getConversationId(),
+                            notice.getContent(),
+                            notice.getCreateTime(),
+                            notice.getStatus(),
+                            0,
+                            0
+                    );
+                }).toList();
         return new PageData<>(list, page.getTotal());
     }
 }

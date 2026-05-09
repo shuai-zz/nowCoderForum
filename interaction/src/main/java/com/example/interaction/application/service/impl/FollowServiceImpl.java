@@ -2,6 +2,7 @@ package com.example.interaction.application.service.impl;
 
 import com.example.interaction.application.dto.FollowListItem;
 import com.example.interaction.application.service.FollowService;
+import com.example.shared.dto.AuthorRef;
 import com.example.shared.event.FollowEvent;
 import com.example.shared.event.UnfollowEvent;
 import com.example.shared.utils.RedisKeyUtil;
@@ -130,10 +131,11 @@ public class FollowServiceImpl implements FollowService {
         return targetIds.stream()
                 .map(id -> {
                     User user = userMap.get((Integer) id);
+                    AuthorRef auth = AuthorRef.of(user.getId(), user.getUsername(), user.getAvatarUrl());
                     Date followTime = Optional.ofNullable(scoreMap.get(id))
                             .map(s -> new Date(s.longValue()))
                             .orElse(null);
-                    return new FollowListItem(user, followTime);
+                    return new FollowListItem(auth, followTime);
                 })
                 .filter(item -> item.user() != null)
                 .toList();

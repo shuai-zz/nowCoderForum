@@ -1,8 +1,8 @@
 package com.example.interaction.application.dto;
 
-import com.example.user.domain.User;
+import com.example.shared.dto.AuthorRef;
 
 import java.util.Date;
 
-public record FollowListItem(User user, Date followTime) {
+public record FollowListItem(AuthorRef user, Date followTime) {
 }

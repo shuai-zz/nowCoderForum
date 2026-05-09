@@ -6,6 +6,7 @@ import com.example.post.application.service.DiscussPostService;
 import com.example.post.domain.entity.DiscussPost;
 import com.example.post.infrastructure.mapper.DiscussPostMapper;
 import com.example.shared.domain.ContentSanitizer;
+import com.example.shared.dto.AuthorRef;
 import com.example.shared.result.PageData;
 import com.example.shared.utils.RedisKeyUtil;
 import com.example.user.application.service.UserService;
@@ -47,7 +48,7 @@ public class DiscussPostServiceImpl
                 .map(post -> {
                     // TODO: 作者账号被删除，userMap.get()返回null， 可能有NPE问题
                     User user = userMap.get(post.getUserId());
-                    return new PostItem(post, user, post.getLikeCount(), 0);
+                    return new PostItem(post, AuthorRef.of(user.getId(), user.getUsername(), user.getAvatarUrl()), post.getLikeCount(), 0);
                 })
                 .toList();
         return new PageData<>(list, page.getTotal());
@@ -125,6 +126,6 @@ public class DiscussPostServiceImpl
     public PostItem findDiscussPostById(int discussPostId, int userId) {
         DiscussPost discussPost = discussPostMapper.selectById(discussPostId);
         User auth = userService.getById(discussPost.getUserId());
-        return PostItem.of(discussPost, auth, discussPost.getLikeCount(), 0);
+        return PostItem.of(discussPost, AuthorRef.of(auth.getId(), auth.getUsername(), auth.getAvatarUrl()), discussPost.getLikeCount(), 0);
     }
 }

@@ -1,6 +1,7 @@
 package com.example.user.interfaces.vo;
 
 
+import com.example.shared.dto.AuthorRef;
 import com.example.user.domain.User;
 
 import java.util.Date;
@@ -29,6 +30,25 @@ public record UserVO(
                 u.getStatus(),
                 u.getAvatarUrl(),
                 u.getCreateTime()
+        );
+    }
+
+    /**
+     * 仅作展示，如帖子+username+userAvatar
+     */
+    public static UserVO from(AuthorRef auth){
+        return new UserVO(
+                auth.id(),
+                auth.username(),
+                // email
+                null,
+                // type
+                0,
+                // status
+                0,
+                auth.avatarUrl(),
+                // createTime
+                null
         );
     }
 }
