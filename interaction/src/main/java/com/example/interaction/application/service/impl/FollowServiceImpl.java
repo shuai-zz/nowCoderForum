@@ -131,13 +131,17 @@ public class FollowServiceImpl implements FollowService {
         return targetIds.stream()
                 .map(id -> {
                     User user = userMap.get((Integer) id);
+                    if (user == null) {
+                        // 用户已被删除：从关注列表里直接剔除（占位无意义，前端无法点进去）
+                        return null;
+                    }
                     AuthorRef auth = AuthorRef.of(user.getId(), user.getUsername(), user.getAvatarUrl());
                     Date followTime = Optional.ofNullable(scoreMap.get(id))
                             .map(s -> new Date(s.longValue()))
                             .orElse(null);
                     return new FollowListItem(auth, followTime);
                 })
-                .filter(item -> item.user() != null)
+                .filter(Objects::nonNull)
                 .toList();
     }
 

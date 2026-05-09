@@ -46,9 +46,11 @@ public class DiscussPostServiceImpl
         // 获取所有帖子点赞数和当前登录用户点赞状态
         List<PostItem> list = discussPosts.stream()
                 .map(post -> {
-                    // TODO: 作者账号被删除，userMap.get()返回null， 可能有NPE问题
                     User user = userMap.get(post.getUserId());
-                    return new PostItem(post, AuthorRef.of(user.getId(), user.getUsername(), user.getAvatarUrl()), post.getLikeCount(), 0);
+                    AuthorRef author = user == null
+                            ? AuthorRef.deleted()
+                            : AuthorRef.of(user.getId(), user.getUsername(), user.getAvatarUrl());
+                    return new PostItem(post, author, post.getLikeCount(), 0);
                 })
                 .toList();
         return new PageData<>(list, page.getTotal());
@@ -126,6 +128,9 @@ public class DiscussPostServiceImpl
     public PostItem findDiscussPostById(int discussPostId, int userId) {
         DiscussPost discussPost = discussPostMapper.selectById(discussPostId);
         User auth = userService.getById(discussPost.getUserId());
-        return PostItem.of(discussPost, AuthorRef.of(auth.getId(), auth.getUsername(), auth.getAvatarUrl()), discussPost.getLikeCount(), 0);
+        AuthorRef author = auth == null
+                ? AuthorRef.deleted()
+                : AuthorRef.of(auth.getId(), auth.getUsername(), auth.getAvatarUrl());
+        return PostItem.of(discussPost, author, discussPost.getLikeCount(), 0);
     }
 }

@@ -46,13 +46,11 @@ public class MessageServiceImpl implements MessageService {
         List<MessageItem> list = conversations.stream()
                 .map(conv -> {
                     // 消息发送者
-                    User sender = userMap.get(conv.getFromId());
-                    AuthorRef from = AuthorRef.of(sender.getId(), sender.getUsername(), sender.getAvatarUrl());
+                    AuthorRef from = toAuthorRef(userMap.get(conv.getFromId()));
 
                     // 消息接收者
                     int targetId = userId == conv.getFromId() ? conv.getToId() : conv.getFromId();
-                    User target = userMap.get(targetId);
-                    AuthorRef to = AuthorRef.of(target.getId(), target.getUsername(), target.getAvatarUrl());
+                    AuthorRef to = toAuthorRef(userMap.get(targetId));
 
                     String conversationId = conv.getConversationId();
                     String content = conv.getContent();
@@ -98,12 +96,10 @@ public class MessageServiceImpl implements MessageService {
         List<MessageItem> list = messages.stream()
                 .map(message -> {
                     // 消息发送者
-                    User sender = fromUserMap.get(message.getFromId());
-                    AuthorRef from = AuthorRef.of(sender.getId(), sender.getUsername(), sender.getAvatarUrl());
+                    AuthorRef from = toAuthorRef(fromUserMap.get(message.getFromId()));
 
                     // 消息接收者
-                    User receiver = toUserMap.get(message.getToId());
-                    AuthorRef to = AuthorRef.of(receiver.getId(), receiver.getUsername(), receiver.getAvatarUrl());
+                    AuthorRef to = toAuthorRef(toUserMap.get(message.getToId()));
 
                     return MessageItem.of(
                             message.getId(),
@@ -197,11 +193,9 @@ public class MessageServiceImpl implements MessageService {
         List<MessageItem> list = notices.stream()
                 .map(notice -> {
                     // 消息发送者
-                    User sender = fromUserMap.get(notice.getFromId());
-                    AuthorRef from = AuthorRef.of(sender.getId(), sender.getUsername(), sender.getAvatarUrl());
+                    AuthorRef from = toAuthorRef(fromUserMap.get(notice.getFromId()));
                     // 消息接收者
-                    User receiver = toUserMap.get(notice.getToId());
-                    AuthorRef to = AuthorRef.of(receiver.getId(), receiver.getUsername(), receiver.getAvatarUrl());
+                    AuthorRef to = toAuthorRef(toUserMap.get(notice.getToId()));
 
                     return MessageItem.of(notice.getId(),
                             from,
@@ -215,5 +209,15 @@ public class MessageServiceImpl implements MessageService {
                     );
                 }).toList();
         return new PageData<>(list, page.getTotal());
+    }
+
+    /**
+     * 把 user 转成 AuthorRef，user 已被删除（null）时返回占位 ref。
+     * 内容性数据（私信、通知）即使作者删了也要继续展示给对端。
+     */
+    private static AuthorRef toAuthorRef(User user) {
+        return user == null
+                ? AuthorRef.deleted()
+                : AuthorRef.of(user.getId(), user.getUsername(), user.getAvatarUrl());
     }
 }

@@ -105,8 +105,14 @@ public class MessageController {
         if (ids.length != 2) {
             throw new ResourceNotFoundException("Invalid conversation id: " + conversationId);
         }
-        int id0 = Integer.parseInt(ids[0]);
-        int id1 = Integer.parseInt(ids[1]);
+        int id0;
+        int id1;
+        try {
+            id0 = Integer.parseInt(ids[0]);
+            id1 = Integer.parseInt(ids[1]);
+        } catch (NumberFormatException e) {
+            throw new ResourceNotFoundException("Invalid conversation id: " + conversationId);
+        }
         int targetId = me.getId() == id0 ? id1 : id0;
         User target = userService.getById(targetId);
         if (target == null) {
