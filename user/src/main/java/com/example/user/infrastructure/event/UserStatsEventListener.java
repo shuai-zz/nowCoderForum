@@ -17,6 +17,9 @@ public class UserStatsEventListener {
 
     private final UserStatisticsMapper userStatisticsMapper;
 
+    /**
+     * 用户收到的总赞数统计：任何内容（帖子/评论）被赞都计入 received_like_count。
+     */
     @EventListener
     public void onLiked(EntityLikedEvent event) {
         userStatisticsMapper.incrementReceivedLikeCount(event.entityUserId(), 1);

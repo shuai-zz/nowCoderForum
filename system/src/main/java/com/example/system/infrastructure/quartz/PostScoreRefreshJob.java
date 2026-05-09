@@ -19,8 +19,22 @@ import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_POST;
  * @author zhaoshuai
  */
 @Slf4j
-public record PostScoreRefreshJob(RedisTemplate<String, Object> redisTemplate, DiscussPostService discussPostService,
-                                  LikeService likeService, ElasticSearchService elasticSearchService) implements Job {
+public class PostScoreRefreshJob implements Job {
+
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final DiscussPostService discussPostService;
+    private final LikeService likeService;
+    private final ElasticSearchService elasticSearchService;
+
+    public PostScoreRefreshJob(RedisTemplate<String, Object> redisTemplate,
+                               DiscussPostService discussPostService,
+                               LikeService likeService,
+                               ElasticSearchService elasticSearchService) {
+        this.redisTemplate = redisTemplate;
+        this.discussPostService = discussPostService;
+        this.likeService = likeService;
+        this.elasticSearchService = elasticSearchService;
+    }
 
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
