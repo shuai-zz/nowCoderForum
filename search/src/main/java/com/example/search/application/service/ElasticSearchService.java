@@ -10,5 +10,5 @@ import com.example.shared.result.PageData;
 public interface ElasticSearchService {
     void saveDiscussPost(DiscussPost discussPost);
     void deleteDiscussPost(int id);
-    PageData<SearchResult> searchDiscussPost(String keyWord, int pageNum, int pageSize) throws Exception;
+    PageData<SearchResult> searchDiscussPost(String keyWord, int pageNum, int pageSize);
 }

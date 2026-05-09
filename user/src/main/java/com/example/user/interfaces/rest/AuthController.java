@@ -2,8 +2,7 @@ package com.example.user.interfaces.rest;
 
 import com.example.shared.exception.ValidationException;
 import com.example.shared.result.Result;
-import com.example.shared.utils.ForumUtil;
-import com.example.shared.utils.RedisKeyUtil;
+import com.example.user.application.service.KaptchaService;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.entity.User;
 import com.example.user.interfaces.dto.LoginRequest;
@@ -11,29 +10,23 @@ import com.example.user.interfaces.dto.RegisterRequest;
 import com.example.user.interfaces.vo.UserVO;
 import com.example.shared.captcha.CaptchaContext;
 import com.example.shared.captcha.CaptchaVerifier;
-import com.google.code.kaptcha.Producer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import com.example.user.interfaces.vo.LoginVO;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.core.RedisTemplate;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import static com.example.shared.constant.ForumConstant.*;
 
 import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -42,22 +35,12 @@ import java.util.concurrent.TimeUnit;
 @Tag(name = "Auth", description = "认证相关：注册 / 激活 / 登录 / 登出 / 验证码 / 当前用户")
 @RestController
 @RequestMapping("/api/v1/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
-    private static final int CAPTCHA_EXPIRE_SECONDS = 60;
-    final Logger logger= LoggerFactory.getLogger(getClass());
-
     private final UserService userService;
-    private final Producer kaptchaProducer;
-    private final RedisTemplate<String, String> redisTemplate;
+    private final KaptchaService kaptchaService;
     private final CaptchaVerifier captchaVerifier;
-
-    public AuthController(UserService userService, Producer kaptchaProducer, RedisTemplate<String, String> redisTemplate, CaptchaVerifier captchaVerifier) {
-        this.userService = userService;
-        this.kaptchaProducer = kaptchaProducer;
-        this.redisTemplate = redisTemplate;
-        this.captchaVerifier = captchaVerifier;
-    }
 
     @Operation(summary = "注册：成功后向注册邮箱发送激活邮件")
     @PostMapping("/register")
@@ -84,17 +67,12 @@ public class AuthController {
     @Operation(summary = "图形验证码（仅 Kaptcha 模式使用）：响应头 X-Captcha-Owner 返回 owner")
     @GetMapping(value = "/captcha", produces = MediaType.IMAGE_PNG_VALUE)
     public void captcha(HttpServletResponse response) throws IOException {
-        String text = kaptchaProducer.createText();
-        BufferedImage image = kaptchaProducer.createImage(text);
+        KaptchaService.Captcha captcha = kaptchaService.issue();
 
-        String owner = ForumUtil.generateUuid();
-        String redisKey = RedisKeyUtil.getKaptchaKey(owner);
-        redisTemplate.opsForValue().set(redisKey, text, CAPTCHA_EXPIRE_SECONDS, TimeUnit.SECONDS);
-
-        response.setHeader("X-Captcha-Owner", owner);
+        response.setHeader("X-Captcha-Owner", captcha.owner());
         response.setContentType(MediaType.IMAGE_PNG_VALUE);
         try (OutputStream os = response.getOutputStream()) {
-            ImageIO.write(image, "png", os);
+            ImageIO.write(captcha.image(), "png", os);
         }
     }
 
@@ -122,7 +100,6 @@ public class AuthController {
             String ticket = authHeader.substring("Bearer ".length()).trim();
             userService.logout(ticket);
         }
-        SecurityContextHolder.clearContext();
         return Result.ok();
     }
 

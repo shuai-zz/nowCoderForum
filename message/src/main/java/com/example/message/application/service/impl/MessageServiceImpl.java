@@ -155,8 +155,15 @@ public class MessageServiceImpl implements MessageService {
 
 
     @Override
-    public int addMessage(Message message) {
-        message.setContent(contentSanitizer.sanitize(message.getContent()));
+    public int addMessage(Message rawMessage) {
+        Message message = Message.builder()
+                .fromId(rawMessage.getFromId())
+                .toId(rawMessage.getToId())
+                .conversationId(rawMessage.getConversationId())
+                .content(contentSanitizer.sanitize(rawMessage.getContent()))
+                .status(rawMessage.getStatus())
+                .createTime(rawMessage.getCreateTime())
+                .build();
         return messageMapper.insertMessage(message);
     }
 

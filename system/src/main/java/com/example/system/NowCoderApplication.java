@@ -11,7 +11,7 @@ import org.springframework.data.elasticsearch.repository.config.EnableElasticsea
 @SpringBootApplication(scanBasePackages = "com.example")
 @EnableConfigurationProperties(CaptchaProperties.class)
 @MapperScan({"com.example.user.infrastructure.mapper", "com.example.post.infrastructure.mapper", "com.example.interaction.infrastructure.mapper", "com.example.message.infrastructure.mapper"})
-@EnableElasticsearchRepositories("com.example.search.infrastructure.mapper")
+@EnableElasticsearchRepositories("com.example.search.infrastructure.repository")
 public class NowCoderApplication {
 
     @PostConstruct

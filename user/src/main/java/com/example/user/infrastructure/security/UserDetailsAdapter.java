@@ -61,6 +61,6 @@ public final class UserDetailsAdapter implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return user.getStatus() == 1;
+        return user.isActivated();
     }
 }

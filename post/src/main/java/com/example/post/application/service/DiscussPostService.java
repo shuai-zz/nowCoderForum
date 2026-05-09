@@ -12,7 +12,7 @@ public interface DiscussPostService{
     PageData<PostItem> selectDiscussPosts(int pageNum, int pageSize, int userId);
     int insertDiscussPost(DiscussPost discussPost);
 
-    PostItem findDiscussPostById(int discussPostId, int userId);
+    PostItem findDiscussPostById(int discussPostId);
 
     void markAsTop(DiscussPost post);
     void markAsWonderful(DiscussPost post);

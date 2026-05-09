@@ -69,7 +69,7 @@ public class PostCommentController {
     }
 
     private void requirePostExists(int id, int currentUserId) {
-        if (discussPostService.findDiscussPostById(id, currentUserId).discussPost() == null) {
+        if (discussPostService.getRawPost(id) == null) {
             throw new ResourceNotFoundException("Post not found: " + id);
         }
     }

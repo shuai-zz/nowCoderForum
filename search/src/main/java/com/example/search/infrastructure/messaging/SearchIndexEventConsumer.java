@@ -37,7 +37,7 @@ public class SearchIndexEventConsumer {
         if (event == null) {
             return;
         }
-        DiscussPost post = discussPostService.findDiscussPostById(event.getEntityId(), 0).discussPost();
+        DiscussPost post = discussPostService.getRawPost(event.getEntityId());
         if (post != null) {
             elasticSearchService.saveDiscussPost(post);
         }

@@ -87,7 +87,7 @@ public class PostController {
     @GetMapping("/{id}")
     public Result<PostDetailVO> detail(@AuthenticationPrincipal User me, @PathVariable int id) {
 
-        PostItem postItem = discussPostService.findDiscussPostById(id, me == null ? 0 : me.getId());
+        PostItem postItem = discussPostService.findDiscussPostById(id);
         if (postItem.discussPost() == null) {
             throw new ResourceNotFoundException("Post not found: " + id);
         }

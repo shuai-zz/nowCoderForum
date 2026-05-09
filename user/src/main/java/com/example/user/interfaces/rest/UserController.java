@@ -17,8 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 
 import com.example.user.interfaces.dto.ChangePasswordRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -41,8 +40,8 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
+@Slf4j
 public class UserController {
-    final Logger log= LoggerFactory.getLogger(getClass());
 
     private static final Set<String> SUPPORTED_AVATAR_EXT = Set.of(".jpg", ".jpeg", ".png");
 

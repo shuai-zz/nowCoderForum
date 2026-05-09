@@ -88,12 +88,13 @@ public class MessageController {
             throw new ResourceNotFoundException("Target user not found: " + req.toName());
         }
 
-        Message m = new Message();
-        m.setFromId(me.getId());
-        m.setToId(target.getId());
-        m.setConversationId(buildConversationId(me.getId(), target.getId()));
-        m.setContent(req.content());
-        m.setCreateTime(new Date());
+        Message m = Message.builder()
+                .fromId(me.getId())
+                .toId(target.getId())
+                .conversationId(buildConversationId(me.getId(), target.getId()))
+                .content(req.content())
+                .createTime(new Date())
+                .build();
         messageService.addMessage(m);
         return Result.ok();
     }

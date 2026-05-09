@@ -125,7 +125,7 @@ public class DiscussPostServiceImpl
     }
 
     @Override
-    public PostItem findDiscussPostById(int discussPostId, int userId) {
+    public PostItem findDiscussPostById(int discussPostId) {
         DiscussPost discussPost = discussPostMapper.selectById(discussPostId);
         User auth = userService.getById(discussPost.getUserId());
         AuthorRef author = auth == null

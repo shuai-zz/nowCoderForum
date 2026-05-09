@@ -1,4 +1,4 @@
-package com.example.search.infrastructure.mapper;
+package com.example.search.infrastructure.repository;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
 import com.example.search.domain.SearchResult;

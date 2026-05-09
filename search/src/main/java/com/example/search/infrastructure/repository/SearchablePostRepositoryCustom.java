@@ -1,4 +1,4 @@
-package com.example.search.infrastructure.mapper;
+package com.example.search.infrastructure.repository;
 
 import com.example.search.domain.SearchResult;
 import com.example.shared.result.PageData;

@@ -38,7 +38,7 @@ public class SearchController {
             @RequestParam String keyword,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize
-    ) throws Exception {
+    ) {
         if (StringUtils.isBlank(keyword)) {
             return Result.ok(PageResult.empty(pageNum, pageSize));
         }

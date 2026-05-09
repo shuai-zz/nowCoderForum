@@ -111,8 +111,9 @@ public class UserServiceImpl
 
         // 同步初始化统计读模型行：保证后续 EntityLikedEvent / FollowEvent
         // 触发的 UPDATE...WHERE user_id=? 一定能命中已有行。
-        UserStatistics stats = new UserStatistics();
-        stats.setUserId(user.getId());
+        UserStatistics stats = UserStatistics.builder()
+                .userId(user.getId())
+                .build();
         userStatisticsMapper.insert(stats);
 
         String url = frontendDomain + "/activate/" + user.getId() + "/" + user.getActivationCode();

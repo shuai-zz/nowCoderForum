@@ -79,7 +79,7 @@ public class CommentController {
 
     private int resolveTargetOwner(int entityType, int entityId, int currentUserId) {
         if (entityType == ENTITY_TYPE_POST) {
-            DiscussPost p = discussPostService.findDiscussPostById(entityId, currentUserId).discussPost();
+            DiscussPost p = discussPostService.getRawPost(entityId);
             if (p == null) {
                 throw new ResourceNotFoundException("Post not found: " + entityId);
             }

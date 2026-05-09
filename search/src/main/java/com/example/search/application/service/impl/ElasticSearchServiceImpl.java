@@ -5,7 +5,7 @@ import com.example.post.domain.entity.DiscussPost;
 import com.example.search.application.service.ElasticSearchService;
 import com.example.search.domain.SearchResult;
 import com.example.search.domain.SearchablePost;
-import com.example.search.infrastructure.mapper.SearchablePostRepository;
+import com.example.search.infrastructure.repository.SearchablePostRepository;
 import com.example.shared.dto.AuthorRef;
 import com.example.shared.result.PageData;
 import com.example.user.application.service.UserService;

@@ -35,12 +35,6 @@ public class NotificationEventConsumer {
         Event event = parseEvent(record);
         if (event == null) return;
 
-        Message message = new Message();
-        message.setFromId(SYSTEM_USER_ID);
-        message.setToId(event.getEntityUserId());
-        message.setConversationId(event.getTopic());
-        message.setCreateTime(new Date());
-
         Map<String, Object> content = new LinkedHashMap<>();
         content.put("userId", event.getUserId());
         content.put("entityType", event.getEntityType());
@@ -48,12 +42,21 @@ public class NotificationEventConsumer {
         if (event.getData() != null && !event.getData().isEmpty()) {
             content.putAll(event.getData());
         }
+        String contentJson;
         try {
-            message.setContent(objectMapper.writeValueAsString(content));
+            contentJson = objectMapper.writeValueAsString(content);
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize notification content", e);
             return;
         }
+
+        Message message = Message.builder()
+                .fromId(SYSTEM_USER_ID)
+                .toId(event.getEntityUserId())
+                .conversationId(event.getTopic())
+                .content(contentJson)
+                .createTime(new Date())
+                .build();
         messageService.addMessage(message);
     }
 

@@ -1,4 +1,4 @@
-package com.example.search.infrastructure.mapper;
+package com.example.search.infrastructure.repository;
 
 import com.example.search.domain.SearchablePost;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
