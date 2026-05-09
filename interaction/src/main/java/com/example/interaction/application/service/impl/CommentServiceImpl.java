@@ -8,15 +8,13 @@ import com.example.interaction.application.service.LikeService;
 import com.example.interaction.domain.entity.Comment;
 import com.example.interaction.infrastructure.mapper.CommentMapper;
 import com.example.post.application.service.DiscussPostService;
-import com.example.shared.constant.ForumConstant;
+import com.example.shared.domain.ContentSanitizer;
 import com.example.shared.result.PageData;
-import com.example.shared.utils.SensitiveFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -30,9 +28,9 @@ import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_COMMENT;
 @RequiredArgsConstructor
 public class CommentServiceImpl implements CommentService {
     private final CommentMapper commentMapper;
-    private final SensitiveFilter sensitiveFilter;
     private final DiscussPostService discussPostService;
     private final LikeService likeService;
+    private final ContentSanitizer contentSanitizer;
 
     @Override
     public PageData<Comment> findCommentsByEntity(int entityType, int entityId, int pageNum, int pageSize) {
@@ -55,8 +53,7 @@ public class CommentServiceImpl implements CommentService {
         if (rawComment == null) {
             throw new IllegalArgumentException("parameter cannot be null");
         }
-        String content = sensitiveFilter.filter(HtmlUtils.htmlEscape(rawComment.getContent()));
-
+        String content = contentSanitizer.sanitize(rawComment.getContent());
         Comment comment = Comment.builder()
                 .userId(rawComment.getUserId())
                 .entityType(rawComment.getEntityType())

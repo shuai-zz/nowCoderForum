@@ -5,13 +5,12 @@ import com.example.message.application.dto.MessageItem;
 import com.example.message.application.service.MessageService;
 import com.example.message.domain.entity.Message;
 import com.example.message.infrastructure.mapper.MessageMapper;
+import com.example.shared.domain.ContentSanitizer;
 import com.example.shared.result.PageData;
-import com.example.shared.utils.SensitiveFilter;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.HtmlUtils;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -27,7 +26,7 @@ import java.util.stream.Collectors;
 public class MessageServiceImpl implements MessageService {
     private final MessageMapper messageMapper;
     private final UserService userService;
-    private final SensitiveFilter sensitiveFilter;
+    private final ContentSanitizer contentSanitizer;
 
     @Override
     public PageData<MessageItem> findConversations(int userId, int pageNum, int pageSize) {
@@ -59,7 +58,7 @@ public class MessageServiceImpl implements MessageService {
                             from,
                             target,
                             conversationId,
-                            HtmlUtils.htmlUnescape(sensitiveFilter.filter(content)),
+                            content,
                             createTime,
                             status,
                             dmCount,
@@ -143,8 +142,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public int addMessage(Message message) {
-        message.setContent(HtmlUtils.htmlEscape(message.getContent()));
-        message.setContent(sensitiveFilter.filter(message.getContent()));
+        message.setContent(contentSanitizer.sanitize(message.getContent()));
         return messageMapper.insertMessage(message);
     }
 
@@ -184,7 +182,7 @@ public class MessageServiceImpl implements MessageService {
                                 fromUserMap.get(notice.getFromId()),
                                 toUserMap.get(notice.getToId()),
                                 notice.getConversationId(),
-                                HtmlUtils.htmlUnescape(notice.getContent()),
+                                notice.getContent(),
                                 notice.getCreateTime(),
                                 notice.getStatus(),
                                 0,

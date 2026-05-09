@@ -5,15 +5,14 @@ import com.example.post.application.dto.PostItem;
 import com.example.post.application.service.DiscussPostService;
 import com.example.post.domain.entity.DiscussPost;
 import com.example.post.infrastructure.mapper.DiscussPostMapper;
+import com.example.shared.domain.ContentSanitizer;
 import com.example.shared.result.PageData;
 import com.example.shared.utils.RedisKeyUtil;
-import com.example.shared.utils.SensitiveFilter;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -27,9 +26,9 @@ import java.util.stream.Collectors;
 public class DiscussPostServiceImpl
         implements DiscussPostService {
     private final DiscussPostMapper discussPostMapper;
-    private final SensitiveFilter sensitiveFilter;
     private final UserService userService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ContentSanitizer contentSanitizer;
 
     @Override
     public PageData<PostItem> selectDiscussPosts(int pageNum, int pageSize, int userId) {
@@ -60,8 +59,8 @@ public class DiscussPostServiceImpl
             throw new IllegalArgumentException("post cannot be null");
         }
         // 转译HTML && 过滤敏感词
-        String title = sensitiveFilter.filter(HtmlUtils.htmlEscape(discussPost.getTitle()));
-        String content = sensitiveFilter.filter(HtmlUtils.htmlEscape(discussPost.getContent()));
+        String title = contentSanitizer.sanitize(discussPost.getTitle());
+        String content = contentSanitizer.sanitize(discussPost.getContent());
 
         DiscussPost post = DiscussPost.builder()
                 .userId(discussPost.getUserId())
