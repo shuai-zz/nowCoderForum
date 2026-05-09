@@ -1,4 +1,4 @@
-package com.example.system.application;
+package com.example.system.application.service;
 
 import java.util.Date;
 

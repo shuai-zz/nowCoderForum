@@ -1,7 +1,7 @@
-package com.example.system.application.impl;
+package com.example.system.application.service.impl;
 
 import com.example.shared.utils.RedisKeyUtil;
-import com.example.system.application.DataService;
+import com.example.system.application.service.DataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.RedisCallback;

@@ -1,6 +1,6 @@
 package com.example.system.infrastructure.interceptor;
 
-import com.example.system.application.DataService;
+import com.example.system.application.service.DataService;
 import com.example.user.domain.entity.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
