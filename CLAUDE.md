@@ -208,37 +208,16 @@ com.example.<module>/
 | **R3** | 2026-05-07 | 包结构 & Read Model：`SearchResult` 独立高亮字段；user/system 包路径统一；删除 `SecurityUtil` 改用 `@AuthenticationPrincipal`；`LoginTicket` 移到 `application/dto/`；`PostScoreRefreshJob` 从 record 改 class |
 | **N1** | 2026-05-08 | 移除 PageHelper（pom + yaml + 死代码）；Transactional Policy 规约写入本文件 |
 | **Audit** | 2026-05-09 | Post-R3 全量审计，发现 23 项新问题 → 见下方 TODO |
+| **P0** | 2026-05-09 | Bug 修复：`AuthorRef.deleted()` 占位修作者删除 NPE（DiscussPost / Message 用占位、Follow 用 filter）；`SimpleDateFormat` → `DateTimeFormatter`；`MessageController` 的 `Integer.parseInt` 包成 `ResourceNotFoundException` |
+| **P1** | 2026-05-09 | 配置 + 死代码清理：删 6 个 module-level `application.yml`（唯一源 = `system/application.yaml`）；删根 `src/test/java/org/example/nowcoder/`（P6 残留）；`type-aliases-package` user 项对齐 `domain.entity`；5 处死代码（loginTicketMapper 注释 / DiscussPostMapper 注释方法 / PostScoreRefreshJob 注释 / `selectByEmail` / `IService` import） |
 
 ---
 
 ## TODO（按优先级）
 
 > 来源：2026-05-09 审计 + R1~R3 没收的尾巴 + 长期技术债。每完成一项就把 `[ ]` 改成 `[x]` 并标完成日期。
-
-### P0 — Bug 修复（会跑挂，优先做）
-
-- [ ] **P0.1** 作者删除时 NPE（3 处都是 `userMap.get(authorId)` 后立即 `.getId()` / `.getUsername()`）：
-  - `post/.../DiscussPostServiceImpl.java:50`（已有 `// TODO` 自承认）
-  - `message/.../MessageServiceImpl.java:49, 54, 101, 105, 200, 203`
-  - `interaction/.../FollowServiceImpl.java:133-138`（line 140 的 `.filter(item -> item.user() != null)` 是 NPE 之后的死防护）
-  - 修法：`if (user == null) return AuthorRef.of(0, "[deleted]", null)`，或在 stream 上 filter 掉 null 用户
-- [ ] **P0.2** `system/.../DataServiceImpl.java:24` `private final SimpleDateFormat dateFormat` 不是线程安全的，并发 UV/DAU 记录会写出脏 Redis key → 改 `DateTimeFormatter`
-- [ ] **P0.3** `message/.../MessageController.java:108-109` `Integer.parseInt(ids[0])` 无 try/catch，畸形 `conversationId` 直接 500 → 包成 `ResourceNotFoundException` / `ValidationException`
-
-### P1 — 配置 & 死代码清理（一次性删干净，简单收益高）
-
-- [ ] **P1.1** 删除 6 个 module-level `application.yml`（user / post / interaction / message / search / shared）：
-  - 多 jar classpath 下加载顺序不确定，可能覆盖 `system/application.yaml`
-  - `user/application.yml` 把 `type-aliases-package` 写成 `com.example.user.domain`（缺 `.entity`），如果它后加载就会顶掉所有其他模块的 alias
-  - 唯一配置源应该是 `system/src/main/resources/application.yaml`
-- [ ] **P1.2** 删除项目根 `src/test/java/org/example/nowcoder/`（7 个 P6 应清未清的旧测试，根 pom 是 `pom` packaging 所以根本没编译，纯 grep 噪音）
-- [ ] **P1.3** `system/application.yaml:90` `type-aliases-package` 把 `com.example.user.domain` 改成 `com.example.user.domain.entity`，与其他模块对齐
-- [ ] **P1.4** 死代码清理（5 处）：
-  - `user/.../UserServiceImpl.java:179, 192, 199` — 3 处 `// loginTicketMapper.xxx(...)` 注释
-  - `post/.../DiscussPostMapper.java:23-45` — 4 个注释掉的 update 方法
-  - `system/.../PostScoreRefreshJob.java:56` — 注释掉的旧 `findDiscussPostById` 调用
-  - `user/.../UserMapper.java:21` `selectByEmail` — 定义但全项目无人调用
-  - `post/.../DiscussPostService.java:3` / `interaction/.../CommentService.java:3` — R1.3 后残留的 `IService` import
+>
+> P0（bug）+ P1（配置/死代码）已于 2026-05-09 完成，移到 changelog。编号保留以便和 commit message 对照。
 
 ### P2 — DDD 收尾（R1~R3 没扫干净的 corner）
 
@@ -283,10 +262,7 @@ com.example.<module>/
 
 ### 推荐执行顺序
 
-1. **P0 三个 bug** — 总共 30 行内的 diff，直接修
-2. **P1.1 + P1.2** — 大量删除，一次性扫干净配置陷阱
-3. **P1.3 + P1.4** — 剩下的死代码补完
-4. **P2.1 ~ P2.4** — DDD 关键收尾（其他 P2.x 是风格问题，可放后面）
-5. **P3** — 真上量了再做
-6. **P4** — 简历项目可不做，但要能讲清楚
-7. **P5** — 阶段性收口
+1. **P2.1 ~ P2.4** — DDD 关键收尾（其他 P2.x 是风格问题，可放后面）
+2. **P3** — 真上量了再做
+3. **P4** — 简历项目可不做，但要能讲清楚
+4. **P5** — 阶段性收口
