@@ -5,9 +5,8 @@ import com.example.shared.exception.ValidationException;
 import com.example.shared.result.Result;
 import com.example.shared.utils.ForumUtil;
 import com.example.user.application.service.UserService;
-import com.example.user.domain.User;
+import com.example.user.domain.entity.User;
 import com.example.user.domain.entity.UserStatistics;
-import com.example.user.infrastructure.utils.SecurityUtil;
 import com.example.user.interfaces.vo.UserProfileVO;
 import com.example.user.interfaces.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -73,7 +73,7 @@ public class UserController {
 
     @Operation(summary = "上传当前用户头像，返回头像 URL")
     @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Result<String> uploadAvatar(@RequestPart("file") MultipartFile file) {
+    public Result<String> uploadAvatar(@AuthenticationPrincipal User me, @RequestPart("file") MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ValidationException("Please select an image");
         }
@@ -93,7 +93,6 @@ public class UserController {
             throw new RuntimeException("Failed to upload avatar", e);
         }
 
-        User me = SecurityUtil.getCurrentUser();
         String avatarUrl = domain + "/api/v1/users/avatar/" + filename;
         userService.updateAvatar(me.getId(), avatarUrl);
         return Result.ok(avatarUrl);
@@ -121,11 +120,10 @@ public class UserController {
 
     @Operation(summary = "修改当前用户密码")
     @PatchMapping("/me/password")
-    public Result<Void> changePassword(@Valid @RequestBody ChangePasswordRequest req) {
+    public Result<Void> changePassword(@AuthenticationPrincipal User me, @Valid @RequestBody ChangePasswordRequest req) {
         if (!req.newPassword().equals(req.confirmPassword())) {
             throw new ValidationException("Passwords do not match");
         }
-        User me = SecurityUtil.getCurrentUser();
         userService.updatePassword(me.getId(), req.oldPassword(), req.newPassword());
         return Result.ok();
     }

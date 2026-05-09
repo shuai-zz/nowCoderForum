@@ -1,8 +1,8 @@
 package com.example.user.application.service;
 
 import com.example.user.application.dto.LoginResult;
-import com.example.user.domain.LoginTicket;
-import com.example.user.domain.User;
+import com.example.user.domain.entity.LoginTicket;
+import com.example.user.domain.entity.User;
 import com.example.user.domain.entity.UserStatistics;
 import org.springframework.security.core.GrantedAuthority;
 

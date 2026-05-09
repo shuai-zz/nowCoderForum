@@ -4,9 +4,8 @@ import com.example.shared.exception.ValidationException;
 import com.example.shared.result.Result;
 import com.example.shared.utils.ForumUtil;
 import com.example.shared.utils.RedisKeyUtil;
-import com.example.user.infrastructure.utils.SecurityUtil;
 import com.example.user.application.service.UserService;
-import com.example.user.domain.User;
+import com.example.user.domain.entity.User;
 import com.example.user.interfaces.dto.LoginRequest;
 import com.example.user.interfaces.dto.RegisterRequest;
 import com.example.user.interfaces.vo.UserVO;
@@ -24,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -128,8 +128,7 @@ public class AuthController {
 
     @Operation(summary = "获取当前登录用户")
     @GetMapping("/me")
-    public Result<UserVO> me() {
-        User user = SecurityUtil.getCurrentUser();
+    public Result<UserVO> me(@AuthenticationPrincipal User user) {
         return Result.ok(UserVO.from(user));
     }
 

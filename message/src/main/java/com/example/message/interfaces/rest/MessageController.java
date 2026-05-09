@@ -12,7 +12,7 @@ import com.example.shared.result.PageData;
 import com.example.shared.result.PageResult;
 import com.example.shared.result.Result;
 import com.example.user.application.service.UserService;
-import com.example.user.domain.User;
+import com.example.user.domain.entity.User;
 import com.example.user.interfaces.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

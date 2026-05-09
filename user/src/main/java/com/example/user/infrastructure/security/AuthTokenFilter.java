@@ -1,8 +1,8 @@
 package com.example.user.infrastructure.security;
 
 import com.example.user.application.service.UserService;
-import com.example.user.domain.LoginTicket;
-import com.example.user.domain.User;
+import com.example.user.domain.entity.LoginTicket;
+import com.example.user.domain.entity.User;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

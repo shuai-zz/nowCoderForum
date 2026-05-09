@@ -7,7 +7,7 @@ import com.example.shared.event.FollowEvent;
 import com.example.shared.event.UnfollowEvent;
 import com.example.shared.utils.RedisKeyUtil;
 import com.example.user.application.service.UserService;
-import com.example.user.domain.User;
+import com.example.user.domain.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisCallback;

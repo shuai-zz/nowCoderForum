@@ -4,7 +4,7 @@ import com.example.interaction.application.service.LikeService;
 import com.example.interaction.interfaces.dto.LikeRequest;
 import com.example.post.application.service.DiscussPostService;
 import com.example.shared.result.Result;
-import com.example.user.domain.User;
+import com.example.user.domain.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

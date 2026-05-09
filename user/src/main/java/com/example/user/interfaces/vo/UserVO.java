@@ -2,7 +2,7 @@ package com.example.user.interfaces.vo;
 
 
 import com.example.shared.dto.AuthorRef;
-import com.example.user.domain.User;
+import com.example.user.domain.entity.User;
 
 import java.util.Date;
 

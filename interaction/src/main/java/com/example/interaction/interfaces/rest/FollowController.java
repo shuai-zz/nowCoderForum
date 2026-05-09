@@ -7,7 +7,7 @@ import com.example.shared.exception.ResourceNotFoundException;
 import com.example.shared.result.PageResult;
 import com.example.shared.result.Result;
 import com.example.user.application.service.UserService;
-import com.example.user.domain.User;
+import com.example.user.domain.entity.User;
 import com.example.user.domain.entity.UserStatistics;
 import com.example.user.interfaces.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -131,7 +131,7 @@ public class FollowController {
         }
         return raw.stream()
                 .map(item -> {
-                    boolean hasFollowed = me!=null&&followService.hasFollowed(me.getId(), ENTITY_TYPE_USER, item.user().getId());
+                    boolean hasFollowed = me!=null&&followService.hasFollowed(me.getId(), ENTITY_TYPE_USER, item.user().id());
                     return new FollowUserVO(UserVO.from(item.user()), item.followTime(), hasFollowed);
                 })
                 .toList();

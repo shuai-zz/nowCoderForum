@@ -7,7 +7,7 @@ import com.example.post.application.service.DiscussPostService;
 import com.example.post.domain.entity.DiscussPost;
 import com.example.shared.exception.ResourceNotFoundException;
 import com.example.shared.result.Result;
-import com.example.user.domain.User;
+import com.example.user.domain.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
