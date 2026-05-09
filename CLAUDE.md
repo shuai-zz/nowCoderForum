@@ -11,7 +11,7 @@ A Spring Boot forum web app (nowCoder Forum) refactored into a multi-module REST
 - **Framework**: Spring Boot 3.4.1, Java 21 (virtual threads enabled), Maven multi-module
 - **Web**: Spring MVC, REST only (Thymeleaf removed in P6)
 - **Database**: MySQL 8 + MyBatis Plus; schema migrations via **Flyway** (`system/src/main/resources/db/migration/`)
-- **Search**: Elasticsearch (`DiscussPostRepository` extends `ElasticsearchRepository`)
+- **Search**: Elasticsearch (`SearchablePostRepository` extends `ElasticsearchRepository`)
 - **Cache / Stats**: Redis (likes, follows, login tickets, user cache, UV/DAU with HyperLogLog and bitmaps)
 - **Messaging**: Kafka for cross-module async events (notification, search index); Spring `ApplicationEventPublisher` for in-process domain events (read-model maintenance)
 - **Scheduling**: Quartz (`job-store-type: memory`) for post score refresh
@@ -70,22 +70,25 @@ nowcoder-parent (pom)
 **业务循环已解耦**：之前 `post → interaction`（查 likeCount）、`user → interaction`（查 followerCount）的反向依赖已通过 **领域事件 + 本地读模型** 拆掉。post 直接读自己的 `discuss_post.like_count`，user 直接读自己的 `user_statistics`，详见 § Domain Events。`interaction` 仍然依赖 `user`/`post` 是合理的（评论/点赞天然依附主体）。
 
 ### Request Flow & Authentication
-1. `SecurityConfig` installs a custom `OncePerRequestFilter` before `UsernamePasswordAuthenticationFilter`. It reads the `ticket` cookie, validates the `LoginTicket` via `UserService`, and puts a `UsernamePasswordAuthenticationToken` into `SecurityContextHolder`.
-2. `AuthTokenFilter` also reads the ticket cookie and stores the `User` in a `ThreadLocal` via `HostHolder` so controllers/services can access the current user.
-3. `SecurityConfig.authorizeHttpRequests` enforces URL-level authorities:
-   - `user`/`admin`/`moderator`: settings, upload, comment, post, letter, notice, like, follow
-   - `moderator` only: `/discuss/top`, `/discuss/wonderful`
-   - `admin` only: `/discuss/delete`, `/data/**`
-4. `GlobalExceptionHandler` handles REST exceptions and returns JSON `Result`.
+
+1. `AuthTokenFilter`（在 `UsernamePasswordAuthenticationFilter` 之前）读取 `Authorization: Bearer <ticket>`，从 Redis 校验 `LoginTicket`，把 `User` 作为 principal 填入 `SecurityContextHolder`。
+2. Controller 通过 `@AuthenticationPrincipal User me` 拿当前用户，无需手写 `SecurityContextHolder` 调用（已删 `SecurityUtil`）。
+3. `SecurityConfig.authorizeHttpRequests` 按 URL 维度做权限：
+   - `user`/`admin`/`moderator`：写操作（post/comment/like/follow/letter/avatar/password）
+   - `moderator` only：`/posts/*/top`、`/posts/*/wonderful`
+   - `admin` only：`/posts/*` DELETE、`/admin/**`
+4. `GlobalExceptionHandler`（在 `shared`）统一 catch `BizException` 子类（`AuthException`/`ResourceNotFoundException`/`ValidationException`），返回 JSON `Result`。
 
 ### Data Access Patterns
-- **MyBatis Plus**: Mappers in each module's `infrastructure/mapper/`, XML in `*/src/main/resources/mapper/`. Pagination uses MP `Page`.
-- **Elasticsearch**: `DiscussPostRepository` for CRUD; `DiscussPostRepositoryImpl` (Spring Data fragment) handles custom highlight search.
+
+- **MyBatis Plus**: Mappers in each module's `infrastructure/mapper/`, XML in `*/src/main/resources/mapper/` (实际只有 `message` 模块用 XML，其他全走 lambda wrapper)。Pagination uses MP `Page`.
+- **Elasticsearch**: `SearchablePostRepository` (in `search/.../infrastructure/mapper/`) for CRUD; `SearchablePostRepositoryImpl` (Spring Data fragment) handles custom highlight search 并返回 `SearchResult` Read Model（与 `DiscussPost` 解耦）。
 - **Redis**: Key conventions centralized in `RedisKeyUtil`.
 
 ### Caching Strategy & Read Models
+
 - **Users**: `UserServiceImpl` caches users in Redis (`user:{id}`, TTL 1h); cache cleared on updates.
-- **Login tickets**: Stored only in Redis (`ticket:{ticket}`); MySQL table dropped.
+- **Login tickets**: Stored only in Redis (`ticket:{ticket}`); MySQL table dropped。`LoginTicket` 类在 `user/application/dto/`（不是 domain，纯缓存 DTO）。
 - **Likes (raw set)**: Who-liked-what is a Redis Set (`like:entity:{type}:{id}`); per-user total like count is a Redis counter (`like:user:{userId}`).
 - **Likes (aggregate counts)**: Persisted on the entity:
   - `discuss_post.like_count` — maintained by `PostLikeEventListener`
@@ -96,12 +99,13 @@ nowcoder-parent (pom)
 - **`likeStatus` (per-user, per-entity)**: NOT aggregated; queried at read time via `LikeService.findEntityLikeStatuses(userId, entityType, entityIds)` (Redis SISMEMBER pipelined). The view layer assembles aggregate count + per-user status before returning.
 
 ### Domain Events (Spring local) — Read-Model Maintenance
-`interaction` is the write side. After every `like` / `unlike` / `follow` / `unfollow` it publishes a Spring `ApplicationEvent` (in-process, no Kafka):
+
+`interaction` 是写侧。每次 `like` / `unlike` / `follow` / `unfollow` 后发一个 Spring `ApplicationEvent`（进程内，不走 Kafka）：
 
 - `EntityLikedEvent` / `EntityUnlikedEvent` (`shared/.../event/`)
 - `FollowEvent` / `UnfollowEvent`
 
-Read-side listeners update their own local tables:
+读侧 listener 各自维护本地表：
 
 | Listener | Module | Table | Trigger |
 |---|---|---|---|
@@ -109,9 +113,10 @@ Read-side listeners update their own local tables:
 | `CommentLikeEventListener` | interaction | `comment.like_count`       | EntityType=COMMENT |
 | `UserStatsEventListener`   | user | `user_statistics.{received_like_count, follower_count, followee_count}` | per event type |
 
-`user_statistics` rows are inserted by `UserServiceImpl.register()` in the same transaction as the `user` insert — this guarantees subsequent `UPDATE … WHERE user_id = ?` always hits an existing row, so listeners can stay as pure increments (no UPSERT needed).
+`user_statistics` 行由 `UserServiceImpl.register()` 在同一事务里 INSERT —— 保证后续 `UPDATE … WHERE user_id = ?` 一定命中已有行，listener 可以保持纯增量（不需要 UPSERT）。
 
 ### Event-Driven Messaging (Kafka — cross-process notifications)
+
 - `EventProducer` (in `shared`) publishes JSON events to Kafka topics for **cross-module side effects** (notifications, search index).
 - **Message** module: `NotificationEventConsumer` listens `comment`/`like`/`follow` → creates system notification messages.
 - **Search** module: `SearchIndexEventConsumer` listens `publish`/`delete` → indexes/removes posts in Elasticsearch.
@@ -120,20 +125,20 @@ Read-side listeners update their own local tables:
 > **何时用哪种？** Kafka 给"另一个 bounded context 的副作用"（通知、搜索索引）；Spring 本地事件给"同进程内的读模型"（点赞数、粉丝数）。后者无需 broker、零延迟、随事务一起回滚。
 
 ### Scheduled Jobs (Quartz)
-- `PostScoreRefreshJob` (in `system` module) runs every 5 minutes. It pops post IDs from a Redis set (`post:score`), recalculates a Hacker-News-style score, updates the DB, and re-indexes the post in Elasticsearch.
+
+- `PostScoreRefreshJob` (in `system` module) runs every 5 minutes. It pops post IDs from a Redis set (`post:score`), recalculates score via `DiscussPost.calculateScore(...)`，updates the DB, and re-indexes the post in Elasticsearch.
 
 ### Configuration Notes
-- **Root config**: `system/src/main/resources/application.yaml` holds the global infrastructure config (datasource, redis, kafka, es, mail, flyway). Each module also has a slim `application.yml` with `spring.application.name` + module-specific bits (mybatis-plus aliases, captcha, etc.).
+
+- **Root config**: `system/src/main/resources/application.yaml` 是唯一真实配置源（datasource、redis、kafka、es、mail、flyway、mybatis-plus）。
 - `application.yaml` imports `.env` via `optional:file:.env[.properties]`.
 - Required env vars: `MYSQL_USERNAME`, `MYSQL_PASSWORD`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `UPLOAD_PATH`. Optional: `CAPTCHA_PROVIDER` (default `kaptcha`), Tencent captcha keys.
-- **No context path**: backend serves at `http://localhost:8080/api/v1/...` (the `/forum` context-path was dropped in P6).
-- **Flyway**: enabled in `system/.../application.yaml`. Migrations live at `system/src/main/resources/db/migration/`. The `forum` database itself must be created externally before first boot (`CREATE DATABASE forum DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`); Flyway then handles all tables. `baseline-on-migrate: true` is set so an existing-DB-first-time-Flyway scenario works.
-- **MyBatis Plus `type-aliases-package`** (root `application.yaml`): `com.example.user.domain,com.example.post.domain.entity,com.example.interaction.domain.entity,com.example.message.domain.entity`. Add new modules' entity packages here when introducing them.
+- **No context path**: backend serves at `http://localhost:8080/api/v1/...`
+- **Flyway**: enabled in `system/.../application.yaml`. Migrations live at `system/src/main/resources/db/migration/`. The `forum` database itself must be created externally before first boot (`CREATE DATABASE forum DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`); Flyway then handles all tables. `baseline-on-migrate: true` 保证已有库首次接 Flyway 不会失败。
+- **MyBatis Plus `type-aliases-package`** (root `application.yaml`): `com.example.user.domain,com.example.post.domain.entity,com.example.interaction.domain.entity,com.example.message.domain.entity`. 新增模块时需同步更新。
 - The `NowCoderApplication` `@PostConstruct` sets `es.set.netty.runtime.available.processors=false` to avoid a Netty/Elasticsearch startup conflict.
 
 ### Transactional Policy
-
-> 本规约统一 `@Transactional` 的使用标准，避免"该加没加"和"不该加乱加"。
 
 | 场景 | 是否加 `@Transactional` | 说明 |
 |---|---|---|
@@ -144,7 +149,7 @@ Read-side listeners update their own local tables:
 | **Redis 操作 + 发本地事件**（`ApplicationEventPublisher`） | ❌ 不加 | 事件失败不会回滚 Redis，这是已知设计选择（最终一致性） |
 | **纯查询** | ❌ 不加 | 无写操作，事务无意义 |
 
-**当前符合规约的方法：**
+**当前规约对照：**
 - `UserServiceImpl.register` — `@Transactional`（user + user_statistics 双表写入）✅
 - `CommentServiceImpl.addComment` — `@Transactional(READ_COMMITTED)`（comment insert + discuss_post.comment_count update）✅
 - `UserServiceImpl.activation` / `updatePassword` — 无注解（单条 update）✅
@@ -165,13 +170,17 @@ com.example.<module>/
 │   └── handler/
 ├── application/         ← Application Service（用例编排）
 │   ├── service/
-│   └── service/impl/
-├── domain/              ← 领域实体（Entity）
+│   ├── service/impl/
+│   └── dto/             ← 跨层 DTO（如 LoginTicket、PostItem）
+├── domain/              ← 领域实体（Entity）+ 领域服务
 │   └── entity/
 └── infrastructure/      ← Mapper、Repository、Config、Security、MQ、Cache、Util
-    ├── mapper/
+    ├── mapper/          ← MyBatis Mapper（注：search 的 ES Repository 也在这里，命名待修）
     ├── config/
     ├── repository/
+    ├── security/
+    ├── event/           ← 领域事件 listener
+    ├── messaging/       ← Kafka producer/consumer
     └── util/
 ```
 
@@ -179,314 +188,105 @@ com.example.<module>/
 
 1. **禁止跨模块访问 infrastructure**（如 user 模块直接调 post 模块的 Mapper）
 2. 模块间通信通过 **application Service 接口** 或 **领域事件（Domain Event）**
-3. 共享代码（`BizException`、`ForumConstant`、`Result`、`RedisKeyUtil`、`ValidationException`）收敛到 `shared` 包
-4. 每个模块可独立演进，未来拆微服务时整体平移即可
+3. 共享代码（`BizException`、`ForumConstant`、`Result`、`RedisKeyUtil`、`AuthorRef`）收敛到 `shared` 包
+4. 跨模块 DTO 不持有他人 domain 实体，统一用 `shared.dto.AuthorRef`（防腐层 ValueObject）
+5. 每个模块可独立演进，未来拆微服务时整体平移即可
 
 ---
 
-## Migration History
+## Changelog
 
-> 旧 monolith → 多模块 + 前后端分离 + 领域事件解耦的改造已在多轮重构中完成。这里只保留最终对开发还有用的事实。
+> 已完成的重构按时间排序。需要看具体改了什么文件，查 `git log` 对应日期。
 
-| 阶段 | 完成时间 | 关键产物 |
+| 阶段 | 完成时间 | 概要 |
 |---|---|---|
-| P0–P5 | ~2026-04 之前 | 模块拆分 + REST API + Vue3 前端迁移 |
-| P6 | 2026-04-21 | 删除 Thymeleaf / 老 Controller / `org.example.nowcoder.*` monolith 残留；Kafka KRaft；去掉 `/forum` context-path |
-| P7 | 2026-05-06 | 业务循环解耦：`discuss_post.like_count` / `comment.like_count` / `user_statistics` 三个本地读模型 + 4 个 Spring 领域事件；`UserServiceImpl.register` 事务内同步建 stats 行；`FollowController` count 切到读模型；接入 Flyway（`V1__init_schema.sql`） |
-
-### 当前已知技术债 / 后续 idea
-
-- **Quartz 仍是 `memory` 模式**（dev 用）；生产部署需要切回 jdbc + 建 `qrtz_*` 表（详见 infra 仓库 `DEPLOY.md`）。
-- **PageHelper 与 MyBatis-Plus 分页混用**：可统一到 MP，删 PageHelper 依赖。
-- **`search → user` 的运行时调用**（搜索结果展示作者信息）：单体下没问题，将来拆微服务时改为 RPC/HTTP。
-- **`system` 模块依赖较广**（Quartz job 调用了几乎所有业务 service）：拆微服务时这里要改异步事件。
-- **新增模块时必须同步更新**根 `application.yaml` 的 `mybatis-plus.type-aliases-package`。
+| **P0–P5** | ~2026-04 之前 | 模块拆分 + REST API + Vue3 前端迁移 |
+| **P6** | 2026-04-21 | 删 Thymeleaf / 老 Controller / `org.example.nowcoder.*` monolith；Kafka KRaft；去 `/forum` context-path |
+| **P7** | 2026-05-06 | 业务循环解耦：3 个本地读模型（`discuss_post.like_count` / `comment.like_count` / `user_statistics`）+ 4 个 Spring 领域事件；`UserServiceImpl.register` 同事务建 stats 行；接入 Flyway |
+| **R1** | 2026-05-07 | DDD 硬伤修复：`User` → POJO + `UserDetailsAdapter`；`DiscussPost` 拆出 `SearchablePost`；去掉三个 Service 的 `extends ServiceImpl`；`FollowController` 不再注 `UserStatisticsMapper`；Controller 不再直接操作 `RedisTemplate` |
+| **R2** | 2026-05-07 | Domain 充血：实体加领域行为（`activate` / `markAsTop` / `softDelete` / `isOnPost` 等）；抽 `ContentSanitizer`；算分公式收进 `DiscussPost.calculateScore`；`AuthorRef` ValueObject 替换跨模块 DTO 中的 `User` |
+| **R3** | 2026-05-07 | 包结构 & Read Model：`SearchResult` 独立高亮字段；user/system 包路径统一；删除 `SecurityUtil` 改用 `@AuthenticationPrincipal`；`LoginTicket` 移到 `application/dto/`；`PostScoreRefreshJob` 从 record 改 class |
+| **N1** | 2026-05-08 | 移除 PageHelper（pom + yaml + 死代码）；Transactional Policy 规约写入本文件 |
+| **Audit** | 2026-05-09 | Post-R3 全量审计，发现 23 项新问题 → 见下方 TODO |
 
 ---
 
-## DDD Architecture Audit (2026-05-07)
+## TODO（按优先级）
 
-> 当前项目是"**DDD 包结构 + Transaction Script 实质**"：4 层目录摆得整齐，但每一层都做了不该做的事 — domain 在和框架谈恋爱，application 在继承 ORM 基类，interfaces 在直接操作基础设施。本节是一次完整审计，定位为简历项目的优化路线图。
+> 来源：2026-05-09 审计 + R1~R3 没收的尾巴 + 长期技术债。每完成一项就把 `[ ]` 改成 `[x]` 并标完成日期。
 
-### 🔴 P0 — 严格违反 DDD（面试一眼能看出的硬伤）
+### P0 — Bug 修复（会跑挂，优先做）
 
-#### 1. Domain 实体被框架污染
+- [ ] **P0.1** 作者删除时 NPE（3 处都是 `userMap.get(authorId)` 后立即 `.getId()` / `.getUsername()`）：
+  - `post/.../DiscussPostServiceImpl.java:50`（已有 `// TODO` 自承认）
+  - `message/.../MessageServiceImpl.java:49, 54, 101, 105, 200, 203`
+  - `interaction/.../FollowServiceImpl.java:133-138`（line 140 的 `.filter(item -> item.user() != null)` 是 NPE 之后的死防护）
+  - 修法：`if (user == null) return AuthorRef.of(0, "[deleted]", null)`，或在 stream 上 filter 掉 null 用户
+- [ ] **P0.2** `system/.../DataServiceImpl.java:24` `private final SimpleDateFormat dateFormat` 不是线程安全的，并发 UV/DAU 记录会写出脏 Redis key → 改 `DateTimeFormatter`
+- [ ] **P0.3** `message/.../MessageController.java:108-109` `Integer.parseInt(ids[0])` 无 try/catch，畸形 `conversationId` 直接 500 → 包成 `ResourceNotFoundException` / `ValidationException`
 
-**A. `User implements UserDetails`** — `user/src/main/java/com/example/user/domain/User.java:21`
-- domain 实体直接 implements Spring Security 的 `UserDetails`，import 了 `org.springframework.security.*`
-- 同时打 MyBatis Plus 的 `@TableName` / `@TableId`
-- **改法**：保留 `User` 为纯 POJO；在 `user/infrastructure/security/` 下加 `UserDetailsAdapter implements UserDetails`，包一层
+### P1 — 配置 & 死代码清理（一次性删干净，简单收益高）
 
-**B. `DiscussPost` 同时是 MySQL 实体 + ES 文档** — `post/src/main/java/com/example/post/domain/entity/DiscussPost.java`
-- `@TableName("discuss_post")` + `@Document(indexName="discusspost")` + `@Setting(shards=6, replicas=3)` + 字段全打 `@Field`
-- search 模块的 highlight 逻辑直接 set 到 `post.title`（`search/.../DiscussPostRepositoryImpl.java:66`），把 `<em>...</em>` 塞回 domain 字段
-- **改法**：`post.domain.entity.DiscussPost`（纯 domain）+ `search.domain.SearchablePost`（ES 文档，独立类）
+- [ ] **P1.1** 删除 6 个 module-level `application.yml`（user / post / interaction / message / search / shared）：
+  - 多 jar classpath 下加载顺序不确定，可能覆盖 `system/application.yaml`
+  - `user/application.yml` 把 `type-aliases-package` 写成 `com.example.user.domain`（缺 `.entity`），如果它后加载就会顶掉所有其他模块的 alias
+  - 唯一配置源应该是 `system/src/main/resources/application.yaml`
+- [ ] **P1.2** 删除项目根 `src/test/java/org/example/nowcoder/`（7 个 P6 应清未清的旧测试，根 pom 是 `pom` packaging 所以根本没编译，纯 grep 噪音）
+- [ ] **P1.3** `system/application.yaml:90` `type-aliases-package` 把 `com.example.user.domain` 改成 `com.example.user.domain.entity`，与其他模块对齐
+- [ ] **P1.4** 死代码清理（5 处）：
+  - `user/.../UserServiceImpl.java:179, 192, 199` — 3 处 `// loginTicketMapper.xxx(...)` 注释
+  - `post/.../DiscussPostMapper.java:23-45` — 4 个注释掉的 update 方法
+  - `system/.../PostScoreRefreshJob.java:56` — 注释掉的旧 `findDiscussPostById` 调用
+  - `user/.../UserMapper.java:21` `selectByEmail` — 定义但全项目无人调用
+  - `post/.../DiscussPostService.java:3` / `interaction/.../CommentService.java:3` — R1.3 后残留的 `IService` import
 
-#### 2. Application Service 继承 MyBatis Plus 基类
+### P2 — DDD 收尾（R1~R3 没扫干净的 corner）
 
-```java
-DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, DiscussPost>
-CommentServiceImpl     extends ServiceImpl<CommentMapper, Comment>
-UserServiceImpl        extends ServiceImpl<UserMapper, User>
-```
-- 继承会把 `IService<T>` 的 100+ 方法（`saveBatch / removeById / listByIds / getOne`...）暴露成接口契约的一部分
-- Controller 已经在用 `userService.listByIds(authIds)` 这种基类方法 → **接口契约被永久绑死在 MP**
-- **改法**：去掉 `extends ServiceImpl`，需要的方法在 Service 接口里显式声明，impl 注入 `Mapper` 调用
+- [ ] **P2.1** `user/.../AuthController.java:23,52,58,92` 还在直接注 `RedisTemplate` 存 captcha — 同 R1.5 模式抽到 `KaptchaService.cacheCaptcha(owner, text)`
+- [ ] **P2.2** `search/.../infrastructure/mapper/SearchablePostRepository.java` 是 ES Repository 不是 MyBatis Mapper — 重命名目录到 `infrastructure/repository/` 并改 `NowCoderApplication` 的 `@EnableElasticsearchRepositories` 包路径
+- [ ] **P2.3** 3 处把 `findDiscussPostById(id, userId).discussPost()` 当存在性检查用（顺带一次无谓的 user 表查询）→ 改用 `discussPostService.getRawPost(id)`：
+  - `interaction/.../CommentController.java:82` `resolveTargetOwner`
+  - `interaction/.../PostCommentController.java:72` `requirePostExists`
+  - `search/.../SearchIndexEventConsumer.java:40` `handlePublish`
+- [ ] **P2.4** `DiscussPostService.findDiscussPostById(int id, int userId)` 中 `userId` 参数 impl 始终传 0（不查 likeStatus）→ 要么真实现 per-user likeStatus，要么从签名删掉
+- [ ] **P2.5** `user/.../UserDetailsAdapter.java:64` `return user.getStatus() == 1` 用魔数 → 改 `return user.isActivated()`
+- [ ] **P2.6** 实体风格统一：`message.../Message` 和 `user.../UserStatistics` 还是 `@Data`（mutable + 全 setter），其他实体已经是 `@Getter` + 域方法 → 二选一
+- [ ] **P2.7** Logger 声明统一：`UserController.java:45` / `AuthController.java:48` 的 `final Logger log = LoggerFactory.getLogger(getClass())` 改类级 `@Slf4j`
+- [ ] **P2.8** `search/.../SearchController.java:41` `throws Exception` 删掉（方法体不抛 checked）
+- [ ] **P2.9** `message/.../MessageServiceImpl.java:163` `addMessage` 直接 mutate 入参 → 改 builder 重建实例（与 `DiscussPostServiceImpl` 风格一致）
+- [ ] **P2.10** `user/.../AuthController.java:125` `SecurityContextHolder.clearContext()` 在 stateless app 是 no-op → 删掉
 
-#### 3. Controller 跨模块直接注入其他模块的 Mapper
+### P3 — 性能（并发下能感知）
 
-`interaction/.../FollowController.java:47`：
-```java
-private final UserStatisticsMapper userStatisticsMapper;  // ← user 模块的 infrastructure
-```
-- 违反本文件"模块间依赖规则"第 1 条："禁止跨模块访问 infrastructure"
-- **改法**：在 `UserService` 加 `getStatistics(int userId): UserStatistics` 方法
+- [ ] **P3.1** `interaction/.../PostCommentController.java:80` `buildCommentVo` 三连击：
+  - 每个父评论触发独立的回复查询（N+1 — 10 个一级评论 = 10+ 次额外 DB roundtrip）
+  - `pageSize=Integer.MAX_VALUE` 在大评论流下直接 OOM
+  - `userService.listByIds(authorReplyIds)` 与 `listByIds(targetReplyIds)` 是两次独立调用，应取并集后单次查
+- [ ] **P3.2** `message/.../MessageServiceImpl.findDms` / `findNotices` 分别 `listByIds(fromIds)` 和 `listByIds(toIds)` → 合并成 `listByIds(union(from, to))`
 
-#### 4. Controller 直接操作 RedisTemplate
+### P4 — 架构（工作量大，简历项目可暂缓）
 
-`PostController` / `LikeController` / `CommentController` 都注入了 `RedisTemplate<String, Object>` 直接做：
-```java
-redisTemplate.opsForSet().add(RedisKeyUtil.getPostScore(), post.getId());
-```
-- 接口层在做"把 postId 加入分数刷新队列"这种领域逻辑
-- **改法**：封到 `DiscussPostService.markForScoreRefresh(int postId)`
+- [ ] **P4.1** `shared` 模块拆分 → `web-starter` / `messaging-starter` / `security-starter` / `captcha` 独立模块（当前 shared 是"跨模块复用代码垃圾桶"）
+- [ ] **P4.2** Kafka `Event` 类型安全化：按 topic 拆成 `PublishPostEvent` / `LikeKafkaEvent` / `FollowKafkaEvent` 等 record（当前是 `Map<String,Object>` 散装事件）
+- [ ] **P4.3** Quartz `memory` → `jdbc`：建 `qrtz_*` 表，配合 infra 仓库部署
+- [ ] **P4.4** `system` 模块解耦：Quartz job 目前调用了几乎所有业务 service，拆微服务时需改为异步事件
+- [ ] **P4.5** 拆微服务时 `search → user`（搜索结果展示作者信息）的运行时调用要改 RPC/HTTP
 
----
+### P5 — 测试 & 简历准备（非代码）
 
-### 🟠 P1 — 应该改，DDD 学习价值高
-
-#### 5. Application DTO 跨模块持有他人的 domain 实体
-
-```java
-record PostItem(DiscussPost discussPost, User author, ...)         // post 持有 user.User
-record FollowListItem(User user, Date followTime)                  // interaction 持有 user.User
-record MessageItem(... User from, User target, ...)                // message 持有 user.User
-```
-- 跨 bounded context 不应该共享 domain 实体
-- **改法**：传 ID 让 controller 组装；或者在每个模块定义 `AuthorRef(int id, String username, String avatar)` 这种局部 ValueObject（ACL/防腐层）
-- 解掉这条后，post / message 在 application 层就不再需要注入 `UserService`
-
-#### 6. Domain 模型贫血（Anemic Domain Model）
-
-所有实体都是 `@Data` / 全 getter+setter，零业务行为。**应该收进 domain 的方法**：
-```java
-// User
-boolean canDelete(DiscussPost p)  { return type == ADMIN; }
-boolean canTopOrFeature()         { return type == MODERATOR || type == ADMIN; }
-void activate(String code) { ... }       // 把 UserServiceImpl.activation 的规则收进来
-
-// DiscussPost
-void markAsTop()       { this.type = TOP; }
-void markAsWonderful() { this.status = WONDERFUL; }
-void softDelete()      { this.status = DELETED; }
-boolean isDeleted()    { return status == DELETED; }
-double calculateScore(long likeCount, Date epoch) { ... }   // 收 PostScoreRefreshJob 里的算分公式
-
-// Comment
-boolean isReply()  { return entityType == ENTITY_TYPE_COMMENT; }
-boolean isOnPost() { return entityType == ENTITY_TYPE_POST; }
-```
-- 当前所有规则都堆在 `Service.updateXxx(id, value)` 这种 Transaction Script 里
-
-#### 7. Application Service 含领域逻辑（应抽 Domain Service）
-
-`DiscussPostServiceImpl.insertDiscussPost` / `CommentServiceImpl.addComment` / `MessageServiceImpl.addMessage` **三处重复**：
-```java
-discussPost.setTitle(HtmlUtils.htmlEscape(discussPost.getTitle()));
-discussPost.setContent(HtmlUtils.htmlEscape(discussPost.getContent()));
-discussPost.setTitle(sensitiveFilter.filter(discussPost.getTitle()));
-discussPost.setContent(sensitiveFilter.filter(discussPost.getContent()));
-```
-- HTML 转义 + 敏感词过滤 = "用户产出内容"的领域规则
-- **改法**：抽 `ContentSanitizer` 领域服务，三处复用
-
-#### 8. search 模块没有自己的 Read Model
-
-- `ElasticSearchServiceImpl` 直接 `import com.example.post.domain.entity.DiscussPost`
-- ES 高亮 title/content 被回写到 `DiscussPost.title`，破坏 domain 完整性
-- **改法**：
-  - `search/domain/SearchablePost`（ES 文档结构）
-  - `search/application/dto/SearchResult`（含独立的 highlight 字段，不污染 title）
-
-#### 9. 模块包结构不一致
-
-| 模块 | 问题 |
-|---|---|
-| `user/` | `domain/User.java` + `domain/LoginTicket.java` 在 domain 根；`domain/entity/UserStatistics.java` 在 entity/ |
-| `system/` | 没有 `application/service/` 子包，`DataService.java` 直接放 `application/`，impl 放 `application/impl/` |
-| `search/` | 完全没有 domain 层 |
-
-#### 10. `UserStatsEventListener` 不区分 entityType
-
-```java
-@EventListener
-public void onLiked(EntityLikedEvent event) {
-    userStatisticsMapper.incrementReceivedLikeCount(event.entityUserId(), 1);  // 不分 type 就 +1
-}
-```
-- 当前任何 entityType 的 like 都会增加用户的 received_like_count（包括评论的赞）
-- 语义模糊，需要明确：是只统计帖子赞，还是所有内容的赞都算？
-- **改法**：要么过滤 `event.entityType() == POST`，要么注释里明确"任何被赞内容都计数"
-
-#### 11. `PostScoreRefreshJob` 用 `record` 实现 Job
-
-```java
-public record PostScoreRefreshJob(...) implements Job
-```
-- record 是不可变值对象，但 Job 是有副作用的服务执行单元
-- 概念错位 — 应该是普通 `class`
+- [ ] **P5.1** 补充领域方法单元测试（`User.activate()` / `DiscussPost.calculateScore()` / `Comment.isOnPost()` 等）
+- [ ] **P5.2** 更新简历：把 DDD 改造（贫血→充血、去框架污染、领域事件解耦、Read Model）写进项目亮点
+- [ ] **P5.3** 准备面试话术：每个改造点的 Why（为什么拆 UserDetails？为什么不用 `extends ServiceImpl`？Read Model 解决什么问题？）
+- [ ] **P5.4** 技术博客：《从 Transaction Script 到 Rich Domain Model 的实践》或类似主题
 
 ---
 
-### 🟡 P2 — 可接受（简历项目暂不修；面试时能解释即可）
+### 推荐执行顺序
 
-#### 12. shared 模块过载（"shared kernel"边界爆炸）
-
-```
-shared/
-├── aop/ServiceLogAspect.java          ← 切到所有 Service
-├── captcha/CaptchaContext + Verifier  ← captcha 是具体业务
-├── config/MybatisPlusConfig + RedisConfig
-├── handler/GlobalExceptionHandler.java ← Web 层组件
-├── messaging/Event + EventProducer    ← Kafka 集成
-├── security/RestAccessDeniedHandler   ← Spring Security 适配
-├── utils/SensitiveFilter              ← 敏感词是领域规则
-└── ...
-```
-- 严格 DDD 的 shared kernel 只装"被多个 BC 共享的纯领域概念"（值对象、领域事件）
-- 现在的 shared 实际上是"一切跨模块复用代码的垃圾桶"
-- 真要修需要拆 4-5 个 starter 模块（`web-starter`、`messaging-starter`、`security-starter`、`captcha`），工作量大、收益小
-
-#### 13. Kafka `Event` 类型不安全
-
-`shared/messaging/Event.java`：
-```java
-private String topic;             // 字符串散落（用常量 mitigate）
-private Map<String, Object> data; // 任意 K-V，没有 schema
-```
-- 跨进程 Kafka 用这种"散装事件"，靠 topic 字符串路由 + HashMap 携带 payload
-- 比起本地 `EntityLikedEvent` 这种 record 弱很多
-- 改成每个 topic 一个 record（`PublishPostEvent` / `LikeKafkaEvent` / `FollowKafkaEvent`）会更清晰
-
-#### 14. 死代码 / `LoginTicket` 残留
-
-- `UserServiceImpl` 里 3 处 `// loginTicketMapper.xxx(...)` 注释代码（`logout` / `getLoginTicket` / `updateAvatar`）
-- `LoginTicket` 类在 `user/domain/`，但它已经是 Redis 缓存对象，不是领域实体 → 应挪到 `user/application/dto/` 或 `user/infrastructure/cache/`
-- `User.activationCode` 字段：一次性用完后永久挂在主表里，可考虑挪走
-
-#### 15. 事务边界不一致
-
-| 方法 | `@Transactional` | 评价 |
-|---|---|---|
-| `UserServiceImpl.register` | ✅ | 正确（多表写入） |
-| `UserServiceImpl.activation` / `updatePassword` | ❌ | 单条 update，可不要 |
-| `DiscussPostServiceImpl.insertDiscussPost` | ❌ | 单写，可不要 |
-| `CommentServiceImpl.addComment` | ✅ READ_COMMITTED | 正确（评论 + 帖子计数） |
-| `MessageServiceImpl.addMessage` | ❌ | 单写，可不要 |
-| `LikeServiceImpl.like` / `FollowServiceImpl.follow` | ❌ | Redis Lua + 发本地事件，需要单独考虑（事件失败不会回滚 Redis） |
-
-- 现状能跑，缺一份"何时加 @Transactional"的规约
-
-#### 16. `SecurityUtil.getCurrentUser()` 静态方法
-
-`user/infrastructure/utils/SecurityUtil.java` 用静态 `SecurityContextHolder.getContext()...` 取当前用户。
-- 单元测试需要 mock 静态调用
-- DDD 风格倾向于注入 `CurrentUserProvider` 接口
-- 但 Spring Security 标配，简历项目能接受
-
----
-
-### 优化路线图
-
-#### Phase R1 — 把硬伤先收拾掉（高 ROI，2-3 天）
-
-| # | 任务 | 工作量 |
-|---|---|---|
-| R1.1 | `User` 拆成 POJO + `UserDetailsAdapter`（infra），切断 domain → Spring Security 依赖 | 半天 |
-| R1.2 | `DiscussPost` 拆成 `post.DiscussPost`（MyBatis）+ `search.SearchablePost`（ES，独立 mapper），search 模块新建 domain 层 | 一天 |
-| R1.3 | 三个 `XxxServiceImpl` 不再 `extends ServiceImpl<Mapper, Entity>`，需要的 Mapper 方法接口里显式声明 | 半天到一天 |
-| R1.4 | `FollowController` 不再注 `UserStatisticsMapper`，加 `UserService.getStatistics(id)` | 小 |
-| R1.5 | `PostController/LikeController/CommentController` 不直接操作 Redis，封到 `DiscussPostService.bumpScore(postId)` 之类 | 小 |
-
-**R1 TODO（截至 2026-05-07）**
-
-- [x] **R1.1** `User` 已拆为纯 POJO；`UserDetailsAdapter` 已建在 `user/infrastructure/security/`。  
-- [x] **R1.2** `SearchablePost` 全面接管 ES 持久化；repository 层已切到 `SearchablePost`；高亮不再回写 `DiscussPost`。  
-- [x] **R1.3** 三个 `ServiceImpl` 已去掉 `extends ServiceImpl<Mapper, T>`，改为显式注入 Mapper。  
-- [x] **R1.4** `FollowController` / `UserController` 不再注入 `UserStatisticsMapper`，统一通过 `userService.getStatistics(id)` 获取。  
-- [x] **R1.5** Controller 层删除 `RedisTemplate` 直接注入，封装到 `DiscussPostService.markForScoreRefresh(int)`。
-
-**R2 TODO**
-
-- [x] **R2.1** 给 `User` / `DiscussPost` / `Comment` 加领域行为方法：`User.activate(code)`、`DiscussPost.markAsTop()` / `markAsWonderful()` / `softDelete()` / `isDeleted()`、`Comment.isReply()` / `isOnPost()`；Service 层改为 `entity.activate(code); mapper.updateById(entity)` 模式
-- [x] **R2.2** 抽取 `ContentSanitizer` 领域服务，统一 HTML 转义 + 敏感词过滤；`DiscussPostServiceImpl` / `CommentServiceImpl` / `MessageServiceImpl` 三处重复逻辑收编
-- [x] **R2.3** 算分公式从 `PostScoreRefreshJob` 收进 `DiscussPost.calculateScore(long likeCount, long commentCount, Date createTime, Date epoch)` 静态方法
-- [x] **R2.4** 跨模块 DTO 不再持有他人 domain 实体：定义 `AuthorRef(id, username, avatar)` ValueObject，替换 `PostItem` / `FollowListItem` / `MessageItem` 中的 `User` 字段
-
-**R3 TODO**
-
-- [x] **R3.1** search 模块建 `domain/SearchResult` Read Model，高亮字段独立（`highlightTitle`/`highlightContent`），不再污染 `DiscussPost.title`
-- [x] **R3.2** user/domain 包结构统一：`User` / `LoginTicket` / `UserStatistics` 都进 `domain/entity/`；删除 `SecurityUtil`，统一用 `@AuthenticationPrincipal`
-- [x] **R3.3** system 包结构统一：`DataService` / `DataServiceImpl` 移到 `application/service/` 子包
-- [x] **R3.4** `LoginTicket` 从 `domain/entity` 挪到 `application/dto/`（Redis 缓存对象，非领域实体）
-- [x] **R3.5** `PostScoreRefreshJob` 从 `record` 改为普通 `class`
-- [x] **R3.6** `UserStatsEventListener.onLiked` 语义明确：注释说明"任何内容（帖子/评论）被赞都计入 received_like_count"
-
-#### Phase R2 — Domain 模型充血化（DDD 加分项，1-2 天）
-
-| # | 任务 |
-|---|---|
-| R2.1 | `User` / `DiscussPost` / `Comment` 加领域行为方法（`activate` / `markAsTop` / `softDelete` / `isDeleted` 等）；Service 改成 `entity.activate(code); userMapper.update(entity)` |
-| R2.2 | 抽 `ContentSanitizer` 领域服务，HTML 转义 + 敏感词过滤三处复用统一 |
-| R2.3 | 算分公式从 `PostScoreRefreshJob` 收进 `DiscussPost.calculateScore(...)` 静态方法 |
-| R2.4 | 跨模块 DTO 不再持有他人 domain 实体：定义 `AuthorRef(id, username, avatar)` 这种局部 ValueObject |
-
-#### Phase R3 — 模块结构与 Read Model（学习价值高，1-2 天）
-
-| # | 任务 |
-|---|---|
-| R3.1 | search 模块建 `domain/SearchablePost` + `application/dto/SearchResult`，搜索高亮不再回写 post 实体 |
-| R3.2 | user/domain 包结构统一：`User` / `LoginTicket` / `UserStatistics` 都进 `domain/entity/`（或都不进） |
-| R3.3 | system 包结构统一：`application/service/{DataService, impl/...}` |
-| R3.4 | `LoginTicket` 挪到 `user/application/dto/` 或 `user/infrastructure/cache/`，从 domain 删除 |
-| R3.5 | `PostScoreRefreshJob` 从 record 改 class |
-| R3.6 | `UserStatsEventListener.onLiked` 明确语义（要么过滤 entityType，要么注释说明） |
-
-#### Phase R4 — 可选（简历项目暂时不做）
-
-- shared 模块拆分（→ web-starter、messaging-starter、security-starter、captcha 模块）
-- Kafka `Event` 类按 topic 拆成多个 record
-- ~~事务注解策略统一（写一份 `@Transactional` 规约）~~（已在 N1.2 完成：规约写入 AGENTS.md § Transactional Policy）
-- ~~替换 `SecurityUtil` 静态方法为注入式 `CurrentUserProvider`~~（已在 R3.2 完成：删除 `SecurityUtil`，统一用 `@AuthenticationPrincipal`）
-- ~~PageHelper 完全迁出，统一用 MyBatis Plus 分页~~（已在 N1.1 完成：删除 pom 依赖、yaml 配置、PageResult 注释）
-
-
----
-
-### 后续任务规划（N-Series）
-
-> R1~R3 + N1.1/N1.2 已完成，以下按优先级排序。
-
-**N1 TODO（技术清理，已完成）**
-
-- [x] **N1.1** 彻底移除 PageHelper：删除根 `pom.xml` dependencyManagement + `application.yaml` 配置 + `PageResult` 注释与死代码
-- [x] **N1.2** 事务注解策略统一：规约写入 AGENTS.md § Transactional Policy，明确"单写不加、多写必加、Redis 不加"
-
-**N2 TODO（代码质量）**
-
-- [ ] **N2.1** 补充领域方法单元测试（`User.activate()` / `DiscussPost.calculateScore()` / `Comment.isOnPost()` 等）
-- [ ] **N2.2** 死代码清理：检查 `UserServiceImpl` 是否还有 `// loginTicketMapper.xxx` 等注释残留
-- [ ] **N2.3** 统一包结构最终检查：确认所有模块 `domain/entity/` 与 `application/service/` 子包已对齐
-
-**N3 TODO（架构级别 — 工作量大，简历项目暂缓）**
-
-- [ ] **N3.1** shared 模块拆分 → `web-starter` / `messaging-starter` / `security-starter` / `captcha` 独立模块
-- [ ] **N3.2** Kafka `Event` 类型安全化：按 topic 拆成 `PublishPostEvent` / `LikeKafkaEvent` / `FollowKafkaEvent` 等 record
-- [ ] **N3.3** Quartz `memory` → `jdbc`：建 `qrtz_*` 表，配合 infra 仓库部署
-- [ ] **N3.4** `system` 模块解耦：Quartz job 目前调用了几乎所有业务 service，拆微服务时需改为异步事件
-
-**N4 TODO（非代码 — 面试准备）**
-
-- [ ] **N4.1** 更新简历：把 DDD 改造（贫血→充血、去框架污染、领域事件解耦、SearchResult Read Model）写进项目亮点
-- [ ] **N4.2** 准备面试话术：每个改造点的 Why（为什么要拆 UserDetails？为什么不用 extends ServiceImpl？Read Model 解决什么问题？）
-- [ ] **N4.3** 技术博客：《从 Transaction Script 到 Rich Domain Model 的实践》或类似主题
+1. **P0 三个 bug** — 总共 30 行内的 diff，直接修
+2. **P1.1 + P1.2** — 大量删除，一次性扫干净配置陷阱
+3. **P1.3 + P1.4** — 剩下的死代码补完
+4. **P2.1 ~ P2.4** — DDD 关键收尾（其他 P2.x 是风格问题，可放后面）
+5. **P3** — 真上量了再做
+6. **P4** — 简历项目可不做，但要能讲清楚
+7. **P5** — 阶段性收口
