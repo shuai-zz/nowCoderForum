@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 
 /**
@@ -39,6 +41,22 @@ public class DiscussPost {
     public static final int STATUS_WONDERFUL = 1;
     public static final int STATUS_DELETED = 2;
 
+    /*
+     * 帖子创建时间 epoch 时间戳。
+     */
+    private static final Date EPOCH;
+    static {
+        try {
+            EPOCH = Date.from(LocalDateTime.of(2014, 8, 1, 0, 0, 0).atZone(ZoneId.systemDefault()).toInstant());
+        } catch (Exception e) {
+            throw new RuntimeException("nowCoder epoch init error", e);
+        }
+    }
+
+    public static double calculateScore(boolean wonderful, int commentCount, long likeCount, Date createTime){
+        long w = (wonderful ? 75 : 0) + commentCount * 10L + likeCount * 2;
+        return Math.log10(Math.max(w, 1))+(double) (createTime.getTime() - EPOCH.getTime()) / (1000 * 3600 * 24);
+    }
 
 
     public void markAsTop(){
