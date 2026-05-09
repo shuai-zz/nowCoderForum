@@ -390,10 +390,10 @@ private Map<String, Object> data; // 任意 K-V，没有 schema
 **R1 TODO（截至 2026-05-07）**
 
 - [x] **R1.1** `User` 已拆为纯 POJO；`UserDetailsAdapter` 已建在 `user/infrastructure/security/`。  
-- [x] **R1.2** `SearchablePost` 类已创建、`DiscussPost` 已去 ES 注解，但 **repository 层仍全程操作 `DiscussPost`**（`DiscussPostRepository` / `DiscussPostRepositoryImpl` / `ElasticSearchServiceImpl` 均未切到 `SearchablePost`），高亮仍回写 domain 字段。  
-- [x] **R1.3** 三个 `ServiceImpl` 仍 `extends ServiceImpl`（`DiscussPostServiceImpl`、`CommentServiceImpl`、`UserServiceImpl`）。  
-- [x] **R1.4** `FollowController` 仍直接注入 `UserStatisticsMapper`；`UserService` 尚无 `getStatistics(id)` 方法。（`UserController` 也直接注了 `UserStatisticsMapper`。）  
-- [x] **R1.5** `PostController` / `LikeController` / `CommentController` 仍直接操作 `RedisTemplate` 刷 score 队列，未封装到 `DiscussPostService`。
+- [x] **R1.2** `SearchablePost` 全面接管 ES 持久化；repository 层已切到 `SearchablePost`；高亮不再回写 `DiscussPost`。  
+- [x] **R1.3** 三个 `ServiceImpl` 已去掉 `extends ServiceImpl<Mapper, T>`，改为显式注入 Mapper。  
+- [x] **R1.4** `FollowController` / `UserController` 不再注入 `UserStatisticsMapper`，统一通过 `userService.getStatistics(id)` 获取。  
+- [x] **R1.5** Controller 层删除 `RedisTemplate` 直接注入，封装到 `DiscussPostService.markForScoreRefresh(int)`。
 
 **R2 TODO**
 
@@ -401,6 +401,15 @@ private Map<String, Object> data; // 任意 K-V，没有 schema
 - [x] **R2.2** 抽取 `ContentSanitizer` 领域服务，统一 HTML 转义 + 敏感词过滤；`DiscussPostServiceImpl` / `CommentServiceImpl` / `MessageServiceImpl` 三处重复逻辑收编
 - [x] **R2.3** 算分公式从 `PostScoreRefreshJob` 收进 `DiscussPost.calculateScore(long likeCount, long commentCount, Date createTime, Date epoch)` 静态方法
 - [x] **R2.4** 跨模块 DTO 不再持有他人 domain 实体：定义 `AuthorRef(id, username, avatar)` ValueObject，替换 `PostItem` / `FollowListItem` / `MessageItem` 中的 `User` 字段
+
+**R3 TODO**
+
+- [x] **R3.1** search 模块建 `domain/SearchResult` Read Model，高亮字段独立（`highlightTitle`/`highlightContent`），不再污染 `DiscussPost.title`
+- [x] **R3.2** user/domain 包结构统一：`User` / `LoginTicket` / `UserStatistics` 都进 `domain/entity/`；删除 `SecurityUtil`，统一用 `@AuthenticationPrincipal`
+- [x] **R3.3** system 包结构统一：`DataService` / `DataServiceImpl` 移到 `application/service/` 子包
+- [x] **R3.4** `LoginTicket` 从 `domain/entity` 挪到 `application/dto/`（Redis 缓存对象，非领域实体）
+- [x] **R3.5** `PostScoreRefreshJob` 从 `record` 改为普通 `class`
+- [x] **R3.6** `UserStatsEventListener.onLiked` 语义明确：注释说明"任何内容（帖子/评论）被赞都计入 received_like_count"
 
 #### Phase R2 — Domain 模型充血化（DDD 加分项，1-2 天）
 
@@ -427,6 +436,6 @@ private Map<String, Object> data; // 任意 K-V，没有 schema
 - shared 模块拆分（→ web-starter、messaging-starter、security-starter、captcha 模块）
 - Kafka `Event` 类按 topic 拆成多个 record
 - 事务注解策略统一（写一份 `@Transactional` 规约）
-- 替换 `SecurityUtil` 静态方法为注入式 `CurrentUserProvider`
+- ~~替换 `SecurityUtil` 静态方法为注入式 `CurrentUserProvider`~~（已在 R3.2 完成：删除 `SecurityUtil`，统一用 `@AuthenticationPrincipal`）
 - PageHelper 完全迁出，统一用 MyBatis Plus 分页
 
