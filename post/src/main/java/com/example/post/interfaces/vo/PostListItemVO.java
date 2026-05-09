@@ -37,7 +37,7 @@ public record PostListItemVO(
         );
     }
 
-    private static String excerpt(String content) {
+    public static String excerpt(String content) {
         if (content == null) {
             return "";
         }

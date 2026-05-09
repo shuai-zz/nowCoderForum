@@ -1,6 +1,6 @@
 package com.example.search.infrastructure.mapper;
 
-import com.example.search.domain.SearchablePost;
+import com.example.search.domain.SearchResult;
 import com.example.shared.result.PageData;
 
 /**
@@ -9,5 +9,5 @@ import com.example.shared.result.PageData;
  * @author zhaoshuai
  */
 public interface SearchablePostRepositoryCustom {
-    PageData<SearchablePost> searchByKeyword(String keyword, int pageNum, int pageSize);
+    PageData<SearchResult> searchByKeyword(String keyword, int pageNum, int pageSize);
 }

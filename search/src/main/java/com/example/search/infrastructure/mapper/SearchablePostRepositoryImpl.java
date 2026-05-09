@@ -1,6 +1,7 @@
 package com.example.search.infrastructure.mapper;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
+import com.example.search.domain.SearchResult;
 import com.example.search.domain.SearchablePost;
 import com.example.shared.result.PageData;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +30,7 @@ public class SearchablePostRepositoryImpl implements SearchablePostRepositoryCus
     private final ElasticsearchOperations elasticsearchOperations;
 
     @Override
-    public PageData<SearchablePost> searchByKeyword(String keyword, int pageNum, int pageSize) {
+    public PageData<SearchResult> searchByKeyword(String keyword, int pageNum, int pageSize) {
         // 创建高亮查询
         HighlightParameters highlightParameters = HighlightParameters.builder()
                 .withPreTags("<em>")
@@ -60,18 +61,27 @@ public class SearchablePostRepositoryImpl implements SearchablePostRepositoryCus
 
         SearchHits<SearchablePost> searchHits = elasticsearchOperations.search(query, SearchablePost.class);
 
-        List<SearchablePost> list = new ArrayList<>(searchHits.getSearchHits().size());
+        List<SearchResult> list = new ArrayList<>(searchHits.getSearchHits().size());
         for (var hit : searchHits.getSearchHits()) {
             SearchablePost post = hit.getContent();
-            List<String> titleHighlights = hit.getHighlightField("title");
-            if (!titleHighlights.isEmpty()) {
-                post.setTitle(titleHighlights.getFirst());
-            }
-            List<String> contentHighlights = hit.getHighlightField("content");
-            if (!contentHighlights.isEmpty()) {
-                post.setContent(contentHighlights.getFirst());
-            }
-            list.add(post);
+            String highlightTitle = hit.getHighlightField("title").stream().findFirst().orElse(null);
+            String highlightContent = hit.getHighlightField("content").stream().findFirst().orElse(null);
+
+            list.add(SearchResult.of(
+                    post.getId(),
+                    post.getUserId(),
+                    null,  // author 由 Service 层填充
+                    post.getTitle(),
+                    post.getContent(),
+                    highlightTitle,
+                    highlightContent,
+                    post.getType(),
+                    post.getStatus(),
+                    post.getCommentCount(),
+                    post.getLikeCount(),
+                    post.getScore(),
+                    post.getCreateTime()
+            ));
         }
         return new PageData<>(list, searchHits.getTotalHits());
     }

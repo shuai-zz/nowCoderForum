@@ -1,11 +1,12 @@
 package com.example.search.application.service.impl;
 
 import com.example.interaction.application.service.LikeService;
-import com.example.post.application.dto.PostItem;
 import com.example.post.domain.entity.DiscussPost;
 import com.example.search.application.service.ElasticSearchService;
+import com.example.search.domain.SearchResult;
 import com.example.search.domain.SearchablePost;
 import com.example.search.infrastructure.mapper.SearchablePostRepository;
+import com.example.shared.dto.AuthorRef;
 import com.example.shared.result.PageData;
 import com.example.user.application.service.UserService;
 import com.example.user.domain.User;
@@ -40,32 +41,42 @@ public class ElasticSearchServiceImpl implements ElasticSearchService {
     }
 
     @Override
-    public PageData<PostItem> searchDiscussPost(String keyWord, int pageNum, int pageSize) {
-        PageData<SearchablePost> page = searchablePostRepository.searchByKeyword(keyWord, pageNum, pageSize);
-        List<DiscussPost> posts = page.items().stream()
-                .map(SearchablePost::toDiscussPost)
-                .toList();
+    public PageData<SearchResult> searchDiscussPost(String keyWord, int pageNum, int pageSize) {
+        PageData<SearchResult> pageData = searchablePostRepository.searchByKeyword(keyWord, pageNum, pageSize);
+        List<SearchResult> searchResults = pageData.items();
 
-        List<Integer> authIds = posts.stream()
-                .map(DiscussPost::getUserId)
+        // 批量查作者信息
+        List<Integer> authIds = searchResults.stream()
+                .map(SearchResult::userId)
                 .distinct()
                 .toList();
-        Map<Integer, User> userMap = userService.listByIds(authIds).stream()
-                .collect(Collectors.toMap(User::getId, u -> u));
+        Map<Integer, AuthorRef> authorMap = userService.listByIds(authIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> AuthorRef.of(u.getId(), u.getUsername(), u.getAvatarUrl())));
 
-        List<Integer> postIds = posts.stream()
-                .map(DiscussPost::getId)
+        // 批量查实时点赞数
+        List<Integer> postIds = searchResults.stream()
+                .map(SearchResult::id)
                 .toList();
         Map<Integer, Long> likeCountMap = likeService.findEntityLikeCounts(ENTITY_TYPE_POST, postIds);
 
-        List<PostItem> items = posts.stream()
-                .map(p -> new PostItem(
-                        p,
-                        userMap.get(p.getUserId()),
-                        likeCountMap.getOrDefault(p.getId(), 0L),
-                        0
+        // 组装完整 SearchResult（填充 author + 实时 likeCount）
+        List<SearchResult> items = searchResults.stream()
+                .map(item -> SearchResult.of(
+                        item.id(),
+                        item.userId(),
+                        authorMap.get(item.userId()),
+                        item.title(),
+                        item.content(),
+                        item.highlightTitle(),
+                        item.highlightContent(),
+                        item.type(),
+                        item.status(),
+                        item.commentCount(),
+                        likeCountMap.getOrDefault(item.id(), item.likeCount()),
+                        item.score(),
+                        item.createTime()
                 ))
                 .toList();
-        return new PageData<>(items, page.total());
+        return new PageData<>(items, pageData.total());
     }
 }

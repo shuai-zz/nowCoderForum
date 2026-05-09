@@ -1,12 +1,11 @@
 package com.example.search.interfaces.rest;
 
-import com.example.post.application.dto.PostItem;
 import com.example.post.interfaces.vo.PostListItemVO;
 import com.example.search.application.service.ElasticSearchService;
+import com.example.search.domain.SearchResult;
 import com.example.shared.result.PageData;
 import com.example.shared.result.PageResult;
 import com.example.shared.result.Result;
-import com.example.user.application.service.UserService;
 import com.example.user.interfaces.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,11 +43,20 @@ public class SearchController {
             return Result.ok(PageResult.empty(pageNum, pageSize));
         }
 
-        PageData<PostItem> pageData = elasticSearchService.searchDiscussPost(keyword, pageNum, pageSize);
+        PageData<SearchResult> pageData = elasticSearchService.searchDiscussPost(keyword, pageNum, pageSize);
         List<PostListItemVO> list = pageData.items().stream()
-                .map(item ->
-                    PostListItemVO.of(item.discussPost(), UserVO.from(item.author()), item.likeCount())
-                ).toList();
+                .map(item -> new PostListItemVO(
+                        item.id(),
+                        item.highlightTitle() != null ? item.highlightTitle() : item.title(),
+                        PostListItemVO.excerpt(item.content()),
+                        UserVO.from(item.author()),
+                        item.commentCount(),
+                        item.likeCount(),
+                        item.type(),
+                        item.status(),
+                        item.createTime(),
+                        item.score()
+                )).toList();
         return Result.ok(PageResult.of(list, pageData.total(), pageNum, pageSize));
     }
 }
