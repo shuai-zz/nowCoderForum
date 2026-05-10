@@ -210,6 +210,7 @@ com.example.<module>/
 | **Audit** | 2026-05-09 | Post-R3 全量审计，发现 23 项新问题 → 见下方 TODO |
 | **P0** | 2026-05-09 | Bug 修复：`AuthorRef.deleted()` 占位修作者删除 NPE（DiscussPost / Message 用占位、Follow 用 filter）；`SimpleDateFormat` → `DateTimeFormatter`；`MessageController` 的 `Integer.parseInt` 包成 `ResourceNotFoundException` |
 | **P1** | 2026-05-09 | 配置 + 死代码清理：删 6 个 module-level `application.yml`（唯一源 = `system/application.yaml`）；删根 `src/test/java/org/example/nowcoder/`（P6 残留）；`type-aliases-package` user 项对齐 `domain.entity`；5 处死代码（loginTicketMapper 注释 / DiscussPostMapper 注释方法 / PostScoreRefreshJob 注释 / `selectByEmail` / `IService` import） |
+| **P2** | 2026-05-09 | DDD 收尾：抽 `KaptchaService` 解耦验证码（AuthController 不再碰 RedisTemplate）；search ES Repository 目录重命名 `mapper → repository`；修复 3 处 `findDiscussPostById` 存在性检查误用为 `getRawPost`；删除 `findDiscussPostById` 无用 `userId` 参数；`UserDetailsAdapter` 魔数改 `isActivated()`；`Message` / `UserStatistics` 实体风格统一为 `@Getter` + builder；Logger 统一 `@Slf4j`；删除多余 `throws Exception`；`addMessage` 不再 mutate 入参；移除无意义的 `SecurityContextHolder.clearContext()` |
 
 ---
 
@@ -217,23 +218,7 @@ com.example.<module>/
 
 > 来源：2026-05-09 审计 + R1~R3 没收的尾巴 + 长期技术债。每完成一项就把 `[ ]` 改成 `[x]` 并标完成日期。
 >
-> P0（bug）+ P1（配置/死代码）已于 2026-05-09 完成，移到 changelog。编号保留以便和 commit message 对照。
-
-### P2 — DDD 收尾（R1~R3 没扫干净的 corner）
-
-- [ ] **P2.1** `user/.../AuthController.java:23,52,58,92` 还在直接注 `RedisTemplate` 存 captcha — 同 R1.5 模式抽到 `KaptchaService.cacheCaptcha(owner, text)`
-- [ ] **P2.2** `search/.../infrastructure/mapper/SearchablePostRepository.java` 是 ES Repository 不是 MyBatis Mapper — 重命名目录到 `infrastructure/repository/` 并改 `NowCoderApplication` 的 `@EnableElasticsearchRepositories` 包路径
-- [ ] **P2.3** 3 处把 `findDiscussPostById(id, userId).discussPost()` 当存在性检查用（顺带一次无谓的 user 表查询）→ 改用 `discussPostService.getRawPost(id)`：
-  - `interaction/.../CommentController.java:82` `resolveTargetOwner`
-  - `interaction/.../PostCommentController.java:72` `requirePostExists`
-  - `search/.../SearchIndexEventConsumer.java:40` `handlePublish`
-- [ ] **P2.4** `DiscussPostService.findDiscussPostById(int id, int userId)` 中 `userId` 参数 impl 始终传 0（不查 likeStatus）→ 要么真实现 per-user likeStatus，要么从签名删掉
-- [ ] **P2.5** `user/.../UserDetailsAdapter.java:64` `return user.getStatus() == 1` 用魔数 → 改 `return user.isActivated()`
-- [ ] **P2.6** 实体风格统一：`message.../Message` 和 `user.../UserStatistics` 还是 `@Data`（mutable + 全 setter），其他实体已经是 `@Getter` + 域方法 → 二选一
-- [ ] **P2.7** Logger 声明统一：`UserController.java:45` / `AuthController.java:48` 的 `final Logger log = LoggerFactory.getLogger(getClass())` 改类级 `@Slf4j`
-- [ ] **P2.8** `search/.../SearchController.java:41` `throws Exception` 删掉（方法体不抛 checked）
-- [ ] **P2.9** `message/.../MessageServiceImpl.java:163` `addMessage` 直接 mutate 入参 → 改 builder 重建实例（与 `DiscussPostServiceImpl` 风格一致）
-- [ ] **P2.10** `user/.../AuthController.java:125` `SecurityContextHolder.clearContext()` 在 stateless app 是 no-op → 删掉
+> P0（bug）+ P1（配置/死代码）+ P2（DDD 收尾）已于 2026-05-09 完成，移到 changelog。编号保留以便和 commit message 对照。
 
 ### P3 — 性能（并发下能感知）
 
@@ -262,7 +247,24 @@ com.example.<module>/
 
 ### 推荐执行顺序
 
-1. **P2.1 ~ P2.4** — DDD 关键收尾（其他 P2.x 是风格问题，可放后面）
-2. **P3** — 真上量了再做
-3. **P4** — 简历项目可不做，但要能讲清楚
-4. **P5** — 阶段性收口
+1. **P3** — 真上量了再做
+2. **P4** — 简历项目可不做，但要能讲清楚
+3. **P5** — 阶段性收口
+
+---
+
+## Project Highlights / 项目亮点（面试 & 简历素材）
+
+> 把改造过程中值得深挖的技术点汇总在这里，方便写简历和准备面试。
+
+### 1. 实体 immutable 化与 MyBatis 反射 fallback 机制
+
+在统一实体风格时，我们将 `Message` 和 `UserStatistics` 从 Lombok `@Data`（mutable，全 setter）改为 `@Getter` + `@Builder` 的不可变风格。这引发了一个问题：`MessageMapper.xml` 中 `<select resultType="...Message">` 默认通过 **setter** 注入字段值，删掉 setter 后理论上应该绑定失败。
+
+但实际测试发现 `selectById` 仍能正常运行。根本原因是 **MyBatis 的字段绑定 fallback 机制**：
+
+1. MyBatis 优先尝试 `setter` 方法注入；
+2. 当 setter 不存在时，自动降级为 **字段反射注入**（`Field.setAccessible(true)` + `field.set()`）；
+3. Lombok 的 `@Getter` 不会把字段声明为 `final`，因此反射可以直接写字段。
+
+> **启示**：不可变实体在 MyBatis 下可以工作，但前提是字段非 `final`。若进一步想使用 `final` 字段（真正 immutable），需要显式配置 MyBatis 的构造函数映射（`<constructor>` 或 `@AutomapConstructor`），或引入 MapStruct 做查询层与领域层的完全隔离。
