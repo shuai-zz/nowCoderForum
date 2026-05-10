@@ -24,9 +24,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_COMMENT;
-import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_POST;
+import static com.example.shared.constant.ForumConstant.*;
 
 @Tag(name = "PostComment", description = "帖子评论查询")
 @RestController
@@ -52,18 +52,29 @@ public class PostCommentController {
         if (pageData.total() == 0) {
             return Result.ok(PageResult.empty(pageNum, pageSize));
         }
-        // 一级comment作者Map
-        List<Integer> authorIds = pageData.items().stream()
-                .map(commentWithLike ->
-                        commentWithLike.comment().getUserId()
+
+        // 1次窗口函数查询：所有以及评论的top-K回复
+        List<Integer> parentIds = pageData.items().stream()
+                .map(cwl -> cwl.comment().getId()).toList();
+        Map<Integer, List<CommentWithLike>> repliesByParent = commentService.findTopRepliesGrouped(parentIds, REPLY_PREVIEW_LIMIT, currentUserId);
+
+        // 1次 user 查询：一级作者 + reply作者 + reply target
+        List<Integer> userIds = Stream.of(
+                        pageData.items().stream().map(cwl -> cwl.comment().getUserId()),
+                        repliesByParent.values().stream().flatMap(List::stream)
+                                .map(r -> r.comment().getUserId()),
+                        repliesByParent.values().stream().flatMap(List::stream)
+                                .map(r -> r.comment().getTargetId())
+                                .filter(targetId -> targetId != 0)
                 )
+                .flatMap(s -> s)
                 .distinct()
                 .toList();
-        Map<Integer, User> authorMap = userService.listByIds(authorIds).stream()
+        Map<Integer, User> userMap = userService.listByIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
 
         List<CommentVO> list = pageData.items().stream()
-                .map(commentWithLike -> buildCommentVo(commentWithLike, authorMap, me))
+                .map(cwl -> buildCommentVo(cwl, repliesByParent, userMap))
                 .toList();
         return Result.ok(PageResult.of(list, pageData.total(), pageNum, pageSize));
     }
@@ -74,34 +85,60 @@ public class PostCommentController {
         }
     }
 
-    private CommentVO buildCommentVo(CommentWithLike commentWithLike, Map<Integer, User> authorMap, User me) {
-        UserVO author = UserVO.from(authorMap.get(commentWithLike.comment().getUserId()));
-        // 查询该comment下所有reply
-        PageData<CommentWithLike> pageData = commentService.findCommentsWithLike(ENTITY_TYPE_COMMENT, commentWithLike.comment().getId(), 0, Integer.MAX_VALUE, me == null ? 0 : me.getId());
-        // 缓存reply的author和reply的target
-        List<Integer> authorReplyIds = pageData.items().stream()
-                .map(replyWithLike ->
-                        replyWithLike.comment().getUserId()
-                )
-                .distinct().toList();
-        List<Integer> targetReplyIds = pageData.items().stream()
-                .map(replyWithLike -> replyWithLike.comment().getTargetId())
-                .filter(targetId->targetId!=0)
-                .distinct().toList();
-        Map<Integer, User> authorReplyMap = userService.listByIds(authorReplyIds).stream()
-                .collect(Collectors.toMap(User::getId, user -> user));
-        Map<Integer, User> targetReplyMap = userService.listByIds(targetReplyIds).stream()
-                .collect(Collectors.toMap(User::getId, user -> user));
-        // 构建replyVO
-        List<ReplyVO> replies = pageData.items().stream()
-                .map(replyWithLike -> {
-                    UserVO from = UserVO.from(authorReplyMap.get(replyWithLike.comment().getUserId()));
-                    UserVO to = UserVO.from(targetReplyMap.get(replyWithLike.comment().getTargetId()));
-                    return ReplyVO.of(replyWithLike.comment(), from, to, replyWithLike.likeCount(), replyWithLike.likeStatus());
-                })
-                .toList();
-
-        return CommentVO.of(commentWithLike.comment(), author, commentWithLike.likeCount(), commentWithLike.likeStatus(),
-               replies, pageData.total());
+    private CommentVO buildCommentVo(CommentWithLike commentWithLike,
+                                     Map<Integer, List<CommentWithLike>> repliesByParent,
+                                     Map<Integer, User> userMap) {
+        UserVO author = UserVO.from(userMap.get(commentWithLike.comment().getUserId()));
+        List<ReplyVO> replies = repliesByParent.getOrDefault(commentWithLike.comment().getId(), List.of()).stream()
+                .map(r -> ReplyVO.of(
+                        r.comment(),
+                        UserVO.from(userMap.get(r.comment().getUserId())),
+                        UserVO.from(userMap.get(r.comment().getTargetId())),
+                        r.likeCount(),
+                        r.likeStatus()
+                )).toList();
+        return CommentVO.of(
+                commentWithLike.comment(),
+                author,
+                commentWithLike.likeCount()
+                , commentWithLike.likeStatus(),
+                replies,
+                commentWithLike.comment().getReplyCount()
+        );
     }
+
+    @Operation(summary = "评论的回复分页")
+    @GetMapping("/api/v1/comments/{id}/replies")
+    public Result<PageResult<ReplyVO>> replies(
+            @AuthenticationPrincipal User me,
+            @PathVariable int id,
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        int currentUserId = me == null ? 0 : me.getId();
+        PageData<CommentWithLike> pageData =
+                commentService.findCommentsWithLike(ENTITY_TYPE_COMMENT, id, pageNum, pageSize, currentUserId);
+        if (pageData.total() == 0) {
+            return Result.ok(PageResult.empty(pageNum, pageSize));
+        }
+
+        List<Integer> userIds = pageData.items().stream()
+                .flatMap(cwl -> Stream.of(cwl.comment().getUserId(), cwl.comment().getTargetId()))
+                .filter(uid -> uid != 0)
+                .distinct()
+                .toList();
+        Map<Integer, User> userMap = userService.listByIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+
+        List<ReplyVO> list = pageData.items().stream()
+                .map(r -> ReplyVO.of(
+                        r.comment(),
+                        UserVO.from(userMap.get(r.comment().getUserId())),
+                        UserVO.from(userMap.get(r.comment().getTargetId())),
+                        r.likeCount(),
+                        r.likeStatus()))
+                .toList();
+        return Result.ok(PageResult.of(list, pageData.total(), pageNum, pageSize));
+    }
+
 }

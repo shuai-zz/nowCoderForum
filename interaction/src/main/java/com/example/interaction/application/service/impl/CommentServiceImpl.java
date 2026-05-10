@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.example.shared.constant.ForumConstant.ENTITY_TYPE_COMMENT;
 
@@ -66,10 +67,17 @@ public class CommentServiceImpl implements CommentService {
 
         int rows = commentMapper.insert(comment);
 
+        // comment数
         if (comment.isOnPost()) {
             int count = findCommentCount(comment.getEntityType(), comment.getEntityId());
             discussPostService.refreshCommentCount(comment.getEntityId(), count);
         }
+        // reply 数
+        if (comment.isReply()){
+            int count = findCommentCount(comment.getEntityType(), comment.getEntityId());
+            commentMapper.refreshReplyCount(comment.getEntityId(), count);
+        }
+
         return rows;
     }
 
@@ -99,5 +107,25 @@ public class CommentServiceImpl implements CommentService {
                 .toList();
 
         return new PageData<>(list, page.getTotal());
+    }
+
+    @Override
+    public Map<Integer, List<CommentWithLike>> findTopRepliesGrouped(List<Integer> parentIds, int limit, int currentUserId) {
+        if(parentIds.isEmpty()){
+            return Map.of();
+        }
+        List<Comment> replies = commentMapper.selectTopRepliesGrouped(parentIds, limit);
+        if(replies.isEmpty()){
+            return Map.of();
+        }
+
+        // 一次性查所有的 reply 的 likeStatus
+        List<Integer> replyIds = replies.stream()
+                .map(Comment::getId).toList();
+        Map<Integer, Integer> likeStatusMap = likeService.findEntityLikeStatuses(currentUserId, ENTITY_TYPE_COMMENT, replyIds);
+
+        return replies.stream()
+                .map(c->CommentWithLike.of(c, c.getLikeCount(), likeStatusMap.get(c.getId())))
+                .collect(Collectors.groupingBy(cwl->cwl.comment().getEntityId()));
     }
 }

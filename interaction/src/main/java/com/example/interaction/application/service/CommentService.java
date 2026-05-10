@@ -4,6 +4,9 @@ import com.example.interaction.application.dto.CommentWithLike;
 import com.example.interaction.domain.entity.Comment;
 import com.example.shared.result.PageData;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * @author zhaoshuai
  */
@@ -18,5 +21,7 @@ public interface CommentService{
     Comment findCommentById(int id);
 
     PageData<CommentWithLike> findCommentsWithLike(int entityType, int entityId, int pageNum, int pageSize, int currentUserId);
+
+    Map<Integer, List<CommentWithLike>> findTopRepliesGrouped(List<Integer> parentIds, int limit, int currentUserId);
 
 }

@@ -40,4 +40,8 @@ public final class ForumConstant {
     public static final String AUTHORITY_USER = "user";
     public static final String AUTHORITY_ADMIN = "admin";
     public static final String AUTHORITY_MODERATOR = "moderator";
+
+    // 一级评论卡片默认展示几条回复
+    public static final int REPLY_PREVIEW_LIMIT = 3;
+
 }
