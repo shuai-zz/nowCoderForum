@@ -228,8 +228,8 @@ com.example.<module>/
 
 - [x] **S1.1** 密码哈希换 BCrypt（2026-05-10）：删 `ForumUtil.md5` + Flyway V3 删 `user.salt` 列 + `User` 实体去 `salt` 字段；`UserServiceImpl#register/login/updatePassword` 三处全部走 `BCryptPasswordEncoder.encode/matches`；顺手修复 `updatePassword` 里"newPassword.equals(oldPassword)"的 latent bug（旧代码 `oldPassword` 早已被覆盖成 hash）
 - [x] **S1.2** Avatar GET 路径遍历漏洞（2026-05-10）：`UserController.avatar` 加白名单正则 `^[a-zA-Z0-9-]+\.(jpg|jpeg|png)$` + `Path.resolve().normalize()` + `startsWith(baseDir)` 双层防御
-- [ ] **S1.3** Avatar 上传无后缀文件抛 `StringIndexOutOfBoundsException`：`UserController.uploadAvatar:80` `original.substring(original.lastIndexOf("."))` 在无 dot 时 substring(-1) 异常 → GlobalExceptionHandler 兜底 500 而非预期的 400。先判 `dot < 0` 再 substring
-- [ ] **S1.4** Avatar 上传 IOException 抛 `RuntimeException` 而非 `BizException`：`UserController.uploadAvatar:92` 走兜底 500 丢失上下文，定义 `UploadFailedException extends BizException`
+- [x] **S1.3** Avatar 上传无后缀文件抛 `StringIndexOutOfBoundsException`（2026-05-10）：`UserController.uploadAvatar` 改成先取 `dot = lastIndexOf(".")`，`dot < 0` 时 ext 直接为空字符串，下游 `StringUtils.isBlank(ext)` 走预期的 400 ValidationException
+- [x] **S1.4** Avatar 上传 IOException 抛 `RuntimeException` 而非 `BizException`（2026-05-10）：新增 `UploadFailedException extends BizException`（status 500）；`BizException` sealed permits 列表加上；`UserController.uploadAvatar` catch 块改抛 `UploadFailedException`，由 `GlobalExceptionHandler` 统一 JSON 输出
 
 ### S2 — 正确性 bug（~半天到 1 天）
 

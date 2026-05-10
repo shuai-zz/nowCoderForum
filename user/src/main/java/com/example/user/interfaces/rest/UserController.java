@@ -1,6 +1,7 @@
 package com.example.user.interfaces.rest;
 
 import com.example.shared.exception.ResourceNotFoundException;
+import com.example.shared.exception.UploadFailedException;
 import com.example.shared.exception.ValidationException;
 import com.example.shared.result.Result;
 import com.example.shared.utils.ForumUtil;
@@ -79,7 +80,8 @@ public class UserController {
             throw new ValidationException("Please select an image");
         }
         String original = file.getOriginalFilename();
-        String ext = original == null ? "" : original.substring(original.lastIndexOf(".")).toLowerCase();
+        int dot = original == null ? -1 : original.lastIndexOf(".");
+        String ext = dot < 0 ? "" : original.substring(dot).toLowerCase();
         if (StringUtils.isBlank(ext) || !SUPPORTED_AVATAR_EXT.contains(ext)) {
             throw new ValidationException("Only jpg/jpeg/png are supported");
         }
@@ -91,7 +93,7 @@ public class UserController {
             file.transferTo(dest.toFile());
         } catch (IOException e) {
             log.error("Avatar upload failed: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to upload avatar", e);
+            throw new UploadFailedException("Avatar upload failed", e);
         }
 
         String avatarUrl = domain + "/api/v1/users/avatar/" + filename;

@@ -6,7 +6,7 @@ package com.example.shared.exception;
  * @author zhaoshuai
  */
 public sealed class BizException extends RuntimeException
-        permits AuthException, ResourceNotFoundException, ValidationException {
+        permits AuthException, ResourceNotFoundException, ValidationException, UploadFailedException {
 
     private final int code;
 
