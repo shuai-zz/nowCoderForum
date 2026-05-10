@@ -35,22 +35,24 @@ public class FollowServiceImpl implements FollowService {
      * 关注 Lua 脚本：原子执行 zadd(followee) + zadd(follower)
      * KEYS[1]=followeeKey, KEYS[2]=followerKey
      * ARGV[1]=entityId, ARGV[2]=userId, ARGV[3]=timestamp
+     * 返回 zadd 新增数量（1 = 首次关注，0 = 已关注），用于幂等：仅首次发事件。
      */
     private static final String FOLLOW_LUA = """
-            redis.call('zadd', KEYS[1], ARGV[3], ARGV[1])
+            local added = redis.call('zadd', KEYS[1], ARGV[3], ARGV[1])
             redis.call('zadd', KEYS[2], ARGV[3], ARGV[2])
-            return 1
+            return added
             """;
 
     /**
      * 取关 Lua 脚本：原子执行 zrem(followee) + zrem(follower)
      * KEYS[1]=followeeKey, KEYS[2]=followerKey
      * ARGV[1]=entityId, ARGV[2]=userId
+     * 返回 zrem 删除数量（1 = 真实取关，0 = 本来就没关注），用于幂等：仅真实取关发事件。
      */
     private static final String UNFOLLOW_LUA = """
-            redis.call('zrem', KEYS[1], ARGV[1])
+            local removed = redis.call('zrem', KEYS[1], ARGV[1])
             redis.call('zrem', KEYS[2], ARGV[2])
-            return 1
+            return removed
             """;
 
     private static final DefaultRedisScript<Long> FOLLOW_SCRIPT =
@@ -62,20 +64,24 @@ public class FollowServiceImpl implements FollowService {
     public void follow(int userId, int entityType, int entityId, int entityUserId) {
         String followeeKey = RedisKeyUtil.getFolloweeKey(userId, entityType);
         String followerKey = RedisKeyUtil.getFollowerKey(entityType, entityId);
-        redisTemplate.execute(FOLLOW_SCRIPT,
+        Long added = redisTemplate.execute(FOLLOW_SCRIPT,
                 List.of(followeeKey, followerKey),
                 String.valueOf(entityId), String.valueOf(userId), String.valueOf(System.currentTimeMillis()));
-        eventPublisher.publishEvent(new FollowEvent(userId, entityType, entityId, entityUserId));
+        if (added != null && added == 1L) {
+            eventPublisher.publishEvent(new FollowEvent(userId, entityType, entityId, entityUserId));
+        }
     }
 
     @Override
     public void unfollow(int userId, int entityType, int entityId, int entityUserId) {
         String followeeKey = RedisKeyUtil.getFolloweeKey(userId, entityType);
         String followerKey = RedisKeyUtil.getFollowerKey(entityType, entityId);
-        redisTemplate.execute(UNFOLLOW_SCRIPT,
+        Long removed = redisTemplate.execute(UNFOLLOW_SCRIPT,
                 List.of(followeeKey, followerKey),
                 String.valueOf(entityId), String.valueOf(userId));
-        eventPublisher.publishEvent(new UnfollowEvent(userId, entityType, entityId, entityUserId));
+        if (removed != null && removed == 1L) {
+            eventPublisher.publishEvent(new UnfollowEvent(userId, entityType, entityId, entityUserId));
+        }
     }
 
     @Override

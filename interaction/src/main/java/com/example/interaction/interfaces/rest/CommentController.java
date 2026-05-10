@@ -42,6 +42,7 @@ public class CommentController {
     @Operation(summary = "发布评论或回复")
     @PostMapping
     public Result<Integer> add(@AuthenticationPrincipal User me,  @Valid @RequestBody CreateCommentRequest req) {
+        int targetOwnerId = resolveTargetOwner(req.entityType(), req.entityId(), me.getId());
 
         Comment c=Comment.builder()
                 .userId(me.getId())
@@ -61,7 +62,7 @@ public class CommentController {
                 .setEntityType(req.entityType())
                 .setEntityId(req.entityId())
                 .setData("postId", req.postId());
-        commentEvent.setEntityUserId(resolveTargetOwner(req.entityType(), req.entityId(), me.getId()));
+        commentEvent.setEntityUserId(targetOwnerId);
         eventProducer.fireEvent(commentEvent);
 
         // 若是对帖子的一级评论：刷新帖子分数

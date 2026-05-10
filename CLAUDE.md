@@ -235,8 +235,8 @@ com.example.<module>/
 
 - [x] **S2.1** `findDiscussPostById` 帖子不存在必 NPE（2026-05-10）：`DiscussPostServiceImpl` selectById 之后加 `discussPost == null` 短路，返回 `PostItem.of(null, AuthorRef.deleted(), 0, 0)` 让 `PostController.detail` 的 `if (postItem.discussPost() == null)` 分支真正走得到
 - [x] **S2.2** `PostController.detail` 不过滤软删帖子（2026-05-10）：detail 方法首行调用 `requirePostExists(id)`，复用同文件已有的 null + isDeleted 校验
-- [ ] **S2.3** `CommentController.add:55, 64` 校验顺序错 → 孤儿评论：先 `addComment` 入库 + refresh post.comment_count，后 `resolveTargetOwner` 校验 entity 存在抛 404。`resolveTargetOwner` 提前到 insert 之前
-- [ ] **S2.4** `FollowServiceImpl#follow/unfollow:62-79` 非幂等 → 计数漂移：Redis zadd/zrem 幂等但 FollowEvent 每次都发，listener +1/-1 累加。前端双击就漂。Lua 脚本里返回是否 first-time，service 据此决定要不要发事件
+- [x] **S2.3** `CommentController.add` 校验顺序错 → 孤儿评论（2026-05-10）：把 `resolveTargetOwner` 提到 `addComment` 之前 + 缓存返回值复用，目标不存在时先 404 而不是先入库。配合 S2.11 的 service 层守卫形成 controller + service 双层防御
+- [x] **S2.4** `FollowServiceImpl#follow/unfollow` 非幂等 → 计数漂移（2026-05-10）：FOLLOW_LUA 改用 `local added = redis.call('zadd', ...); return added`，UNFOLLOW_LUA 同模式返回 `removed`。service 仅在 `result == 1` 时发 FollowEvent/UnfollowEvent，前端连点不再让 `user_statistics.follower_count` 漂
 - [x] **S2.5** `PostScoreRefreshJob` 给软删帖子重新索引 ES（2026-05-10）：refresh 中 post 非空后再判 `isDeleted()` 直接 return（log.debug，软删属正常流程）
 - [x] **S2.6** `SearchIndexEventConsumer.handlePublish` 同样问题（2026-05-10）：`if (post != null)` 改成 `post == null || post.isDeleted()` 提前 return
 - [ ] **S2.7** `EventProducer:23-28` 静默吞 `JsonProcessingException`：序列化失败 caller 不知道，事件直接丢。改抛出
