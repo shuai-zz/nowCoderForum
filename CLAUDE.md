@@ -211,6 +211,7 @@ com.example.<module>/
 | **P0** | 2026-05-09 | Bug 修复：`AuthorRef.deleted()` 占位修作者删除 NPE（DiscussPost / Message 用占位、Follow 用 filter）；`SimpleDateFormat` → `DateTimeFormatter`；`MessageController` 的 `Integer.parseInt` 包成 `ResourceNotFoundException` |
 | **P1** | 2026-05-09 | 配置 + 死代码清理：删 6 个 module-level `application.yml`（唯一源 = `system/application.yaml`）；删根 `src/test/java/org/example/nowcoder/`（P6 残留）；`type-aliases-package` user 项对齐 `domain.entity`；5 处死代码（loginTicketMapper 注释 / DiscussPostMapper 注释方法 / PostScoreRefreshJob 注释 / `selectByEmail` / `IService` import） |
 | **P2** | 2026-05-09 | DDD 收尾：抽 `KaptchaService` 解耦验证码（AuthController 不再碰 RedisTemplate）；search ES Repository 目录重命名 `mapper → repository`；修复 3 处 `findDiscussPostById` 存在性检查误用为 `getRawPost`；删除 `findDiscussPostById` 无用 `userId` 参数；`UserDetailsAdapter` 魔数改 `isActivated()`；`Message` / `UserStatistics` 实体风格统一为 `@Getter` + builder；Logger 统一 `@Slf4j`；删除多余 `throws Exception`；`addMessage` 不再 mutate 入参；移除无意义的 `SecurityContextHolder.clearContext()` |
+| **P3** | 2026-05-10 | 性能：`MessageServiceImpl.findDms` / `findNotices` 双 `listByIds` 合并成单次 union（P3.2）；`PostCommentController.buildCommentVo` 干掉 N+1 子回复查询 —— 加 `comment.reply_count` 物化列（Flyway V2 + 写侧同事务 refresh）+ 窗口函数 `selectTopRepliesGrouped` 一次拉整页 top-K 回复（P3.1）；整页 user 查询 union 到 controller 顶层；新增 `GET /api/v1/comments/{id}/replies` 加载更多分页接口；`REPLY_PREVIEW_LIMIT=3` |
 
 ---
 
@@ -218,15 +219,7 @@ com.example.<module>/
 
 > 来源：2026-05-09 审计 + R1~R3 没收的尾巴 + 长期技术债。每完成一项就把 `[ ]` 改成 `[x]` 并标完成日期。
 >
-> P0（bug）+ P1（配置/死代码）+ P2（DDD 收尾）已于 2026-05-09 完成，移到 changelog。编号保留以便和 commit message 对照。
-
-### P3 — 性能（并发下能感知）
-
-- [ ] **P3.1** `interaction/.../PostCommentController.java:80` `buildCommentVo` 三连击：
-  - 每个父评论触发独立的回复查询（N+1 — 10 个一级评论 = 10+ 次额外 DB roundtrip）
-  - `pageSize=Integer.MAX_VALUE` 在大评论流下直接 OOM
-  - `userService.listByIds(authorReplyIds)` 与 `listByIds(targetReplyIds)` 是两次独立调用，应取并集后单次查
-- [ ] **P3.2** `message/.../MessageServiceImpl.findDms` / `findNotices` 分别 `listByIds(fromIds)` 和 `listByIds(toIds)` → 合并成 `listByIds(union(from, to))`
+> P0/P1/P2（2026-05-09）+ P3（2026-05-10 性能）已完成，移到 changelog。P4（架构层改造）暂缓，下次有空再做。编号保留以便和 commit message 对照。
 
 ### P4 — 架构（工作量大，简历项目可暂缓）
 
@@ -247,9 +240,8 @@ com.example.<module>/
 
 ### 推荐执行顺序
 
-1. **P3** — 真上量了再做
-2. **P4** — 简历项目可不做，但要能讲清楚
-3. **P5** — 阶段性收口
+1. **P5** — 阶段性收口（测试 + 简历 + 面试话术）
+2. **P4** — 架构层改造，简历项目可暂缓（拆 shared、Kafka 事件类型化、Quartz JDBC 化等）
 
 ---
 
@@ -268,3 +260,16 @@ com.example.<module>/
 3. Lombok 的 `@Getter` 不会把字段声明为 `final`，因此反射可以直接写字段。
 
 > **启示**：不可变实体在 MyBatis 下可以工作，但前提是字段非 `final`。若进一步想使用 `final` 字段（真正 immutable），需要显式配置 MyBatis 的构造函数映射（`<constructor>` 或 `@AutomapConstructor`），或引入 MapStruct 做查询层与领域层的完全隔离。
+
+### 2. N+1 消除：窗口函数 + 读模型物化列双管齐下
+
+帖子详情页旧实现：每条一级评论独立查"全部回复 + 两次 user 查询"（reply 作者 / reply target），10 个一级评论 = 30+ 次额外 DB roundtrip；且回复用 `pageSize=Integer.MAX_VALUE` 全量加载，热门帖子下有 OOM 风险。
+
+改造分两层：
+
+1. **物化 `reply_count` 列**：与 `discuss_post.comment_count` / `comment.like_count` 对称，`comment` 表加 `reply_count INT NOT NULL DEFAULT 0`（Flyway V2 + 一次性 backfill），`CommentServiceImpl.addComment` 同事务内 `refreshReplyCount(parentId, count)`。读侧直接拿列，不再 COUNT。
+2. **窗口函数批量取 top-K**：MySQL 8 `ROW_NUMBER() OVER (PARTITION BY entity_id ORDER BY create_time DESC)` 一次性拉整页所有父评论的 top-3 回复，`buildCommentVo` 退化成纯组装。整页所有 user 查询（一级作者 + 回复作者 + 回复 target）union 到 controller 顶层做一次 `listByIds`。
+
+效果：原来 `1 + 1 + N×3` 次查询（N=pageSize），现在固定 2 次 comment + 1 次 user，不随 pageSize 增长。新增 `/api/v1/comments/{id}/replies` 分页接口供前端"展开更多回复"。
+
+> **踩过的坑**：`./mvnw -pl system spring-boot:run` 不带 `-am` 不会重建上游 `interaction` 模块，第一次测试发现窗口函数日志根本没出现 —— 加载的是 `~/.m2/` 里的旧 JAR。跨模块改动后必须 `./mvnw clean install -DskipTests` 或 `-pl system -am spring-boot:run`。
