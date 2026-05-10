@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author zhaoshuai
@@ -85,21 +86,21 @@ public class MessageServiceImpl implements MessageService {
         Page<Message> page = new Page<>(pageNum,pageSize);
         List<Message> messages = messageMapper.selectDms(page, conversationId);
 
-        List<Integer> fromIds = messages.stream().map(Message::getFromId).toList();
-        List<Integer> toIds = messages.stream().map(Message::getToId).toList();
-        Map<Integer, User> fromUserMap = userService.listByIds(fromIds).stream()
+        // 批量获取发送/接收用户
+        List<Integer> userIds = messages.stream()
+                .flatMap(message -> Stream.of(message.getFromId(), message.getToId()))
+                .distinct()
+                .toList();
+        Map<Integer, User> userMap = userService.listByIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, u -> u));
-        Map<Integer, User> toUserMap = userService.listByIds(toIds).stream()
-                .collect(Collectors.toMap(User::getId, u -> u));
-
 
         List<MessageItem> list = messages.stream()
                 .map(message -> {
                     // 消息发送者
-                    AuthorRef from = toAuthorRef(fromUserMap.get(message.getFromId()));
+                    AuthorRef from = toAuthorRef(userMap.get(message.getFromId()));
 
                     // 消息接收者
-                    AuthorRef to = toAuthorRef(toUserMap.get(message.getToId()));
+                    AuthorRef to = toAuthorRef(userMap.get(message.getToId()));
 
                     return MessageItem.of(
                             message.getId(),
@@ -191,18 +192,19 @@ public class MessageServiceImpl implements MessageService {
     public PageData<MessageItem> findNotices(int userId, String topic, int pageNum, int pageSize) {
         Page<Message> page = new Page<>(pageNum,pageSize);
         List<Message> notices = messageMapper.selectNotices(page, userId, topic);
-        List<Integer> fromUserIds = notices.stream().map(Message::getFromId).toList();
-        List<Integer> toUserIds = notices.stream().map(Message::getToId).toList();
-        Map<Integer, User> fromUserMap = userService.listByIds(fromUserIds).stream()
-                .collect(Collectors.toMap(User::getId, u -> u));
-        Map<Integer, User> toUserMap = userService.listByIds(toUserIds).stream()
+        // 批量获取发送/接收用户
+        List<Integer> userIds = notices.stream()
+                .flatMap(notice -> Stream.of(notice.getFromId(), notice.getToId()))
+                .distinct()
+                .toList();
+        Map<Integer, User> userMap = userService.listByIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, u -> u));
         List<MessageItem> list = notices.stream()
                 .map(notice -> {
                     // 消息发送者
-                    AuthorRef from = toAuthorRef(fromUserMap.get(notice.getFromId()));
+                    AuthorRef from = toAuthorRef(userMap.get(notice.getFromId()));
                     // 消息接收者
-                    AuthorRef to = toAuthorRef(toUserMap.get(notice.getToId()));
+                    AuthorRef to = toAuthorRef(userMap.get(notice.getToId()));
 
                     return MessageItem.of(notice.getId(),
                             from,
