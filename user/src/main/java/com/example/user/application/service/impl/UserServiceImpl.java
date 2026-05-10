@@ -23,6 +23,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,15 +42,18 @@ public class UserServiceImpl
     private final RedisTemplate<String, Object> redisTemplate;
     private final UserStatisticsMapper userStatisticsMapper;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     public UserServiceImpl(MailClient mailClient,
                            RedisTemplate<String, Object> redisTemplate,
                            UserStatisticsMapper userStatisticsMapper,
-                           UserMapper userMapper) {
+                           UserMapper userMapper,
+                           PasswordEncoder passwordEncoder) {
         this.mailClient = mailClient;
         this.redisTemplate = redisTemplate;
         this.userStatisticsMapper = userStatisticsMapper;
         this.userMapper = userMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Value("${nowcoder.path.frontend}")
@@ -95,11 +99,9 @@ public class UserServiceImpl
             throw new ValidationException("This email already exists");
         }
 
-        String salt = ForumUtil.generateUuid().substring(0, 5);
         User user = User.builder()
                 .username(username)
-                .password(ForumUtil.md5(password + salt))
-                .salt(salt)
+                .password(passwordEncoder.encode(password))
                 .email(email)
                 .type(User.TYPE_USER)
                 .status(User.STATUS_INACTIVE)
@@ -157,8 +159,7 @@ public class UserServiceImpl
             throw new AuthException("This account has not been activated");
         }
 
-        password = ForumUtil.md5(password + user.getSalt());
-        if (!Objects.equals(password, user.getPassword())) {
+        if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new AuthException("Password error");
         }
 
@@ -203,18 +204,17 @@ public class UserServiceImpl
     @Override
     public void updatePassword(int id, String oldPassword, String newPassword) {
         User user = userMapper.selectById(id);
-        oldPassword = ForumUtil.md5(oldPassword + user.getSalt());
-        if (!oldPassword.equals(user.getPassword())) {
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
             throw new ValidationException("Incorrect Password");
         }
         if (newPassword.length() < 8) {
             throw new ValidationException("Password length must be greater than 8");
         }
-        if (newPassword.equals(oldPassword)) {
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
             throw new ValidationException("New password cannot be the same as the old password");
         }
         try {
-            userMapper.updatePassword(id, ForumUtil.md5(newPassword + user.getSalt()));
+            userMapper.updatePassword(id, passwordEncoder.encode(newPassword));
         } catch (Exception e) {
             throw new ValidationException("Failed to update password");
         }

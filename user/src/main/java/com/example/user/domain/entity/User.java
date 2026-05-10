@@ -24,8 +24,6 @@ public class User {
     private int id;
     private String username;
     private String password;
-    // 密码盐值，增强密码安全性
-    private String salt;
     private String email;
     // 0-普通用户；1-超级管理员；2-版主
     private int type;
