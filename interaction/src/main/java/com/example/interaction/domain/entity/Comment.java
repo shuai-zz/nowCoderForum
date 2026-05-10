@@ -38,6 +38,9 @@ public class Comment {
     /** 点赞数：事件驱动维护，由 CommentLikeEventListener 监听 EntityLikedEvent 后增减。 */
     private int likeCount;
 
+    /** 回复数：新增评论时同事务刷新（CommentServiceImpl#addComment），与 discuss_post.comment_count 同模式。 */
+    private int replyCount;
+
     private int status;
 
     private Date createTime;
