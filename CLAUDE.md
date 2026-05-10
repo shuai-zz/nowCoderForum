@@ -212,50 +212,18 @@ com.example.<module>/
 | **P1** | 2026-05-09 | 配置 + 死代码清理：删 6 个 module-level `application.yml`（唯一源 = `system/application.yaml`）；删根 `src/test/java/org/example/nowcoder/`（P6 残留）；`type-aliases-package` user 项对齐 `domain.entity`；5 处死代码（loginTicketMapper 注释 / DiscussPostMapper 注释方法 / PostScoreRefreshJob 注释 / `selectByEmail` / `IService` import） |
 | **P2** | 2026-05-09 | DDD 收尾：抽 `KaptchaService` 解耦验证码（AuthController 不再碰 RedisTemplate）；search ES Repository 目录重命名 `mapper → repository`；修复 3 处 `findDiscussPostById` 存在性检查误用为 `getRawPost`；删除 `findDiscussPostById` 无用 `userId` 参数；`UserDetailsAdapter` 魔数改 `isActivated()`；`Message` / `UserStatistics` 实体风格统一为 `@Getter` + builder；Logger 统一 `@Slf4j`；删除多余 `throws Exception`；`addMessage` 不再 mutate 入参；移除无意义的 `SecurityContextHolder.clearContext()` |
 | **P3** | 2026-05-10 | 性能：`MessageServiceImpl.findDms` / `findNotices` 双 `listByIds` 合并成单次 union（P3.2）；`PostCommentController.buildCommentVo` 干掉 N+1 子回复查询 —— 加 `comment.reply_count` 物化列（Flyway V2 + 写侧同事务 refresh）+ 窗口函数 `selectTopRepliesGrouped` 一次拉整页 top-K 回复（P3.1）；整页 user 查询 union 到 controller 顶层；新增 `GET /api/v1/comments/{id}/replies` 加载更多分页接口；`REPLY_PREVIEW_LIMIT=3` |
-| **Audit-2** | 2026-05-10 | Post-P3 全量审计（DDD / Bug / 面试硬伤 三维度）：发现 2 项 DEALBREAKER（密码 MD5+5字符 salt、1/122 测试覆盖）、12 项 HIGH/MED bug（avatar 路径遍历 + 上传异常、`findDiscussPostById` NPE、detail 不过滤软删、CommentController 校验顺序、follow 非幂等、ES 索引漏过滤软删、消费者无幂等、UV/DAU 临时 key 无 TTL 等）、9 项 DDD/一致性问题（实体 Lombok 风格 split、PostItem 暴露 domain entity、select-then-update 反 pattern、ServiceLogAspect 用 SimpleDateFormat 违反 P0 等）→ 见下方 S1/S2/S3 |
+| **Audit-2** | 2026-05-10 | Post-P3 全量审计（DDD / Bug / 面试硬伤 三维度）：发现 2 项 DEALBREAKER（密码 MD5+5字符 salt、1/122 测试覆盖）、12 项 HIGH/MED bug（avatar 路径遍历 + 上传异常、`findDiscussPostById` NPE、detail 不过滤软删、CommentController 校验顺序、follow 非幂等、ES 索引漏过滤软删、消费者无幂等、UV/DAU 临时 key 无 TTL 等）、9 项 DDD/一致性问题（实体 Lombok 风格 split、PostItem 暴露 domain entity、select-then-update 反 pattern、ServiceLogAspect 用 SimpleDateFormat 违反 P0 等）→ S1/S2/S3 |
+| **S1** | 2026-05-10 | 安全 & 致命 bug：MD5+5字符 salt → BCrypt（`UserServiceImpl#register/login/updatePassword` + Flyway V3 删 `user.salt` 列 + 顺手修 `updatePassword` 比对 hash 而非原文的 latent bug）；avatar GET 路径遍历双层防御（白名单正则 + `Path.resolve().normalize().startsWith(baseDir)`）；avatar 上传无后缀 → 走 400 ValidationException；IOException 改抛 `UploadFailedException extends BizException` |
+| **S2** | 2026-05-10 ~ 2026-05-11 | 正确性 bug 11 项：`findDiscussPostById` 帖子不存在返回 `PostItem.missing` 而非 NPE；`PostController.detail` 调 `requirePostExists` 过滤软删；`CommentController.add` 校验顺序前置 + `EntityExistenceChecker` 形成 controller/service 双层；Follow LUA 改返回 `added`/`removed`，service 仅 `result==1` 时发 FollowEvent；`PostScoreRefreshJob` / `SearchIndexEventConsumer` 跳过软删帖子；`EventProducer` 序列化失败抛 `IllegalStateException`；`Event.eventId`（UUID）+ `EventIdempotencyGuard`（Redis SETNX，24h TTL）实现两个 Kafka consumer 幂等；`UserStatsEventListener` 0 行命中 warn 日志；`DataServiceImpl` UV/DAU 合并 key 加 10min TTL |
+| **S3** | 2026-05-11 | DDD & 一致性收尾 9 项：`ServiceLogAspect` `SimpleDateFormat` → `static DateTimeFormatter` + 删 P6 旧注释；`DiscussPost` 补齐 `@NoArgsConstructor`/`@AllArgsConstructor` 与四件套对齐；`PostItem` 拍平为结构性字段 + `from`/`missing`/`isMissing()`，VO 改接收 PostItem，interfaces 层不再消费 domain entity；`DiscussPostMapper.updateCommentCount/updateScore` 单 UPDATE 替代 select-then-update；三实体新增 `applySanitizedContent(...)` domain 方法替代 service 端 builder 重建；`FollowController` 加 `@RequestMapping("/api/v1")` class-level；删 `PostController.detail` 未用 `me`；`User.canActivateWith` 改 `Objects.equals` 防 NPE |
 
 ---
 
 ## TODO（按优先级）
 
-> 来源：2026-05-09 审计 + R1~R3 没收的尾巴 + 长期技术债。每完成一项就把 `[ ]` 改成 `[x]` 并标完成日期。
+> 来源：长期技术债 + 简历 / 面试准备。每完成一项就把 `[ ]` 改成 `[x]` 并标完成日期。
 >
-> 第一轮：P0/P1/P2（2026-05-09）+ P3（2026-05-10 性能）已完成，移到 changelog。
-> 第二轮：Audit-2（2026-05-10）发现 23 项新问题 → S1/S2/S3 待处理（S = Second sweep，避免与已完成的 P 系列编号撞车）。
-> P4（架构层改造）继续暂缓，下次有空再做。
-
-### S1 — 安全 & 致命 bug（必先修，~2-3 小时）
-
-- [x] **S1.1** 密码哈希换 BCrypt（2026-05-10）：删 `ForumUtil.md5` + Flyway V3 删 `user.salt` 列 + `User` 实体去 `salt` 字段；`UserServiceImpl#register/login/updatePassword` 三处全部走 `BCryptPasswordEncoder.encode/matches`；顺手修复 `updatePassword` 里"newPassword.equals(oldPassword)"的 latent bug（旧代码 `oldPassword` 早已被覆盖成 hash）
-- [x] **S1.2** Avatar GET 路径遍历漏洞（2026-05-10）：`UserController.avatar` 加白名单正则 `^[a-zA-Z0-9-]+\.(jpg|jpeg|png)$` + `Path.resolve().normalize()` + `startsWith(baseDir)` 双层防御
-- [x] **S1.3** Avatar 上传无后缀文件抛 `StringIndexOutOfBoundsException`（2026-05-10）：`UserController.uploadAvatar` 改成先取 `dot = lastIndexOf(".")`，`dot < 0` 时 ext 直接为空字符串，下游 `StringUtils.isBlank(ext)` 走预期的 400 ValidationException
-- [x] **S1.4** Avatar 上传 IOException 抛 `RuntimeException` 而非 `BizException`（2026-05-10）：新增 `UploadFailedException extends BizException`（status 500）；`BizException` sealed permits 列表加上；`UserController.uploadAvatar` catch 块改抛 `UploadFailedException`，由 `GlobalExceptionHandler` 统一 JSON 输出
-
-### S2 — 正确性 bug（~半天到 1 天）
-
-- [x] **S2.1** `findDiscussPostById` 帖子不存在必 NPE（2026-05-10）：`DiscussPostServiceImpl` selectById 之后加 `discussPost == null` 短路，返回 `PostItem.of(null, AuthorRef.deleted(), 0, 0)` 让 `PostController.detail` 的 `if (postItem.discussPost() == null)` 分支真正走得到
-- [x] **S2.2** `PostController.detail` 不过滤软删帖子（2026-05-10）：detail 方法首行调用 `requirePostExists(id)`，复用同文件已有的 null + isDeleted 校验
-- [x] **S2.3** `CommentController.add` 校验顺序错 → 孤儿评论（2026-05-10）：把 `resolveTargetOwner` 提到 `addComment` 之前 + 缓存返回值复用，目标不存在时先 404 而不是先入库。配合 S2.11 的 service 层守卫形成 controller + service 双层防御
-- [x] **S2.4** `FollowServiceImpl#follow/unfollow` 非幂等 → 计数漂移（2026-05-10）：FOLLOW_LUA 改用 `local added = redis.call('zadd', ...); return added`，UNFOLLOW_LUA 同模式返回 `removed`。service 仅在 `result == 1` 时发 FollowEvent/UnfollowEvent，前端连点不再让 `user_statistics.follower_count` 漂
-- [x] **S2.5** `PostScoreRefreshJob` 给软删帖子重新索引 ES（2026-05-10）：refresh 中 post 非空后再判 `isDeleted()` 直接 return（log.debug，软删属正常流程）
-- [x] **S2.6** `SearchIndexEventConsumer.handlePublish` 同样问题（2026-05-10）：`if (post != null)` 改成 `post == null || post.isDeleted()` 提前 return
-- [x] **S2.7** `EventProducer` 静默吞 `JsonProcessingException`（2026-05-10）：catch 后追加 `throw new IllegalStateException("Event serialization failed: " + topic, e)`，把"事件丢失"从沉默 bug 升级为显式失败；保留 log.error 便于排查
-- [x] **S2.8** Notification / SearchIndex 消费者无幂等（2026-05-10）：`Event` 增加 `eventId` 字段（UUID），`EventProducer.fireEvent` 在投递前自动填充；新建 `EventIdempotencyGuard`（Redis SETNX with TTL=24h）守卫两个 consumer 入口；`RedisKeyUtil.getProcessedEventKey(eventId)` key 约定。Kafka at-least-once 重投递不再产生重复通知 / 重复 ES 写入
-- [x] **S2.9** `UserStatsEventListener` row 缺失静默 no-op（2026-05-10）：所有 `incrementXxx` 返回值检查，0 行命中走 `warnIfMissing(...)` log.warn 并附带 op + userId；不抛异常以避免回滚上游 Redis 操作（最终一致性策略）
-- [x] **S2.10** `DataServiceImpl` UV/DAU 合并查询临时 key 无 TTL（2026-05-10）：`calculateUv` / `calculateDau` 在 union/bitOp 之后立刻 `redisTemplate.expire(mergedKey, Duration.ofMinutes(10))`，10 分钟足够 admin 面板渲染，过期后 redis 自动回收
-- [x] **S2.11** Like / Comment 写前不校验 entity 存在（2026-05-10）：抽 `EntityExistenceChecker`（POST 走 `getRawPost` + `isDeleted` 检查；COMMENT 走 `commentMapper.selectById` + `status != 0` 检查），在 `LikeServiceImpl.like` 与 `CommentServiceImpl.addComment` 入口先 `requireExists`，杜绝脏 Redis Set 与孤儿评论。注：用 mapper 而非 CommentService 避免 LikeService↔CommentService 循环依赖
-
-### S3 — DDD & 一致性收尾（~半天）
-
-- [x] **S3.1** `ServiceLogAspect:36` 用 `SimpleDateFormat`（2026-05-11）：换成 `static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")`，`LocalDateTime.now().format(FMT)` —— 不可变 + 线程安全，与 P0 changelog 已经对外宣传的统一基线对齐
-- [x] **S3.2** 实体 Lombok 风格 split（2026-05-11）：`DiscussPost` 补齐 `@NoArgsConstructor` + `@AllArgsConstructor`，统一与 `User` / `Comment` / `Message` 一致的 `@Getter @Builder @NoArgsConstructor @AllArgsConstructor` 四件套；面试官抽查实体不会再露馅
-- [x] **S3.3** `PostItem` record 直接持有 `DiscussPost` domain entity（2026-05-11）：改成结构性字段（id/title/content/type/status/commentCount/score/createTime + author/likeCount/likeStatus），新增 `PostItem.from(post, ...)` / `PostItem.missing(author)` / `isMissing()`；`PostListItemVO.of(item, author)` 与 `PostDetailVO.of(item, author)` 直接接受 PostItem，interfaces 层不再消费 domain entity
-- [x] **S3.4** `DiscussPostServiceImpl#refreshCommentCount/updateScore` select-then-update 反 pattern（2026-05-11）：`DiscussPostMapper` 新增 `updateCommentCount(id, count)` / `updateScore(id, score)`，service 入参侧做 `count >= 0 / score >= 0` 校验后单 UPDATE；并发安全且 SQL 减半
-- [x] **S3.5** `insertDiscussPost` / `addComment` / `addMessage` builder 重建模板代码（2026-05-11）：DiscussPost / Comment / Message 各加一个 `applySanitizedContent(...)` domain 方法，service 直接调用 + insert，省掉三处 ~20 行的 builder 重建
-- [x] **S3.6** `FollowController` 缺 class-level `@RequestMapping`（2026-05-11）：加 `@RequestMapping("/api/v1")`，方法路径瘦身为 `/follows`、`/follows/{type}/{id}`、`/users/{userId}/followees`、`/users/{userId}/followers`
-- [x] **S3.7** `PostController.detail:88` 入参 `@AuthenticationPrincipal User me` 未使用（2026-05-11）：直接删除，未登录用户 detail 仍 permitAll 可访问，如未来要加 likeStatus 再补
-- [x] **S3.8** `User.canActivateWith` `activationCode.equals(code)` 防 NPE（2026-05-11）：改 `Objects.equals(activationCode, code)`，activationCode 列虽 NOT NULL DEFAULT '' 但代码不应假设永远非空
-- [x] **S3.9** `ServiceLogAspect:29` 引用已删 `org.example.nowcoder` 包路径（2026-05-11）：删除整段 P6 历史注释
+> 第一轮 P0~P3、第二轮 S1~S3 已全部完成，详见 changelog。剩余 P4（架构层改造，简历项目可暂缓）+ P5（测试 / 简历 / 博客）。
 
 ### P4 — 架构（工作量大，简历项目可暂缓）
 
@@ -276,12 +244,9 @@ com.example.<module>/
 
 ### 推荐执行顺序
 
-1. **S1** — 安全 & 致命 bug（密码 + 路径遍历 + 上传异常，~2-3 小时）—— 面试硬伤优先
-2. **S2** — 正确性 bug（NPE / 软删 / 幂等 / 一致性，~半天到 1 天）
-3. **P5.1** — 给读模型 + 事件监听器写测试（半天到 1 天）—— 简历亮点不能没测试
-4. **S3** — DDD & 一致性收尾（~半天）
-5. **P5.2~5.4** — 简历 / 面试话术 / 博客
-6. **P4** — 架构层改造，简历项目可暂缓
+1. **P5.1** — 给读模型 + 事件监听器写测试（半天到 1 天）—— 简历亮点不能没测试
+2. **P5.2~5.4** — 简历 / 面试话术 / 博客
+3. **P4** — 架构层改造，简历项目可暂缓
 
 ---
 
