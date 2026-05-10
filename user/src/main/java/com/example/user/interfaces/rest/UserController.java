@@ -31,6 +31,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 
 /**
@@ -44,6 +45,7 @@ import java.util.Set;
 public class UserController {
 
     private static final Set<String> SUPPORTED_AVATAR_EXT = Set.of(".jpg", ".jpeg", ".png");
+    private static final Pattern AVATAR_FILENAME = Pattern.compile("^[a-zA-Z0-9-]+\\.(jpg|jpeg|png)$");
 
     private final UserService userService;
 
@@ -100,7 +102,20 @@ public class UserController {
     @Operation(summary = "读取头像图片（二进制）")
     @GetMapping("/avatar/{filename}")
     public void avatar(@PathVariable String filename, HttpServletResponse response) throws IOException {
-        File file = new File(uploadPath, filename);
+        // 第一层：白名单
+        if (!AVATAR_FILENAME.matcher(filename).matches()) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+        // 第二层：路径包含
+        Path baseDir = Path.of(uploadPath).toAbsolutePath().normalize();
+        Path resolved = baseDir.resolve(filename).normalize();
+        if(!resolved.startsWith(baseDir)){
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+
+        File file = resolved.toFile();
         if (!file.exists() || !file.isFile()) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
