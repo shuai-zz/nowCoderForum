@@ -37,6 +37,9 @@ build/
 .env.example
 .claude
 
+### Personal Notes ###
+INTERVIEW.md
+
 ### Maven Wrapper ###
 mvnw
 mvnw.cmd
