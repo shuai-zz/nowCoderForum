@@ -212,6 +212,7 @@ com.example.<module>/
 | **P1** | 2026-05-09 | 配置 + 死代码清理：删 6 个 module-level `application.yml`（唯一源 = `system/application.yaml`）；删根 `src/test/java/org/example/nowcoder/`（P6 残留）；`type-aliases-package` user 项对齐 `domain.entity`；5 处死代码（loginTicketMapper 注释 / DiscussPostMapper 注释方法 / PostScoreRefreshJob 注释 / `selectByEmail` / `IService` import） |
 | **P2** | 2026-05-09 | DDD 收尾：抽 `KaptchaService` 解耦验证码（AuthController 不再碰 RedisTemplate）；search ES Repository 目录重命名 `mapper → repository`；修复 3 处 `findDiscussPostById` 存在性检查误用为 `getRawPost`；删除 `findDiscussPostById` 无用 `userId` 参数；`UserDetailsAdapter` 魔数改 `isActivated()`；`Message` / `UserStatistics` 实体风格统一为 `@Getter` + builder；Logger 统一 `@Slf4j`；删除多余 `throws Exception`；`addMessage` 不再 mutate 入参；移除无意义的 `SecurityContextHolder.clearContext()` |
 | **P3** | 2026-05-10 | 性能：`MessageServiceImpl.findDms` / `findNotices` 双 `listByIds` 合并成单次 union（P3.2）；`PostCommentController.buildCommentVo` 干掉 N+1 子回复查询 —— 加 `comment.reply_count` 物化列（Flyway V2 + 写侧同事务 refresh）+ 窗口函数 `selectTopRepliesGrouped` 一次拉整页 top-K 回复（P3.1）；整页 user 查询 union 到 controller 顶层；新增 `GET /api/v1/comments/{id}/replies` 加载更多分页接口；`REPLY_PREVIEW_LIMIT=3` |
+| **Audit-2** | 2026-05-10 | Post-P3 全量审计（DDD / Bug / 面试硬伤 三维度）：发现 2 项 DEALBREAKER（密码 MD5+5字符 salt、1/122 测试覆盖）、12 项 HIGH/MED bug（avatar 路径遍历 + 上传异常、`findDiscussPostById` NPE、detail 不过滤软删、CommentController 校验顺序、follow 非幂等、ES 索引漏过滤软删、消费者无幂等、UV/DAU 临时 key 无 TTL 等）、9 项 DDD/一致性问题（实体 Lombok 风格 split、PostItem 暴露 domain entity、select-then-update 反 pattern、ServiceLogAspect 用 SimpleDateFormat 违反 P0 等）→ 见下方 S1/S2/S3 |
 
 ---
 
@@ -219,7 +220,42 @@ com.example.<module>/
 
 > 来源：2026-05-09 审计 + R1~R3 没收的尾巴 + 长期技术债。每完成一项就把 `[ ]` 改成 `[x]` 并标完成日期。
 >
-> P0/P1/P2（2026-05-09）+ P3（2026-05-10 性能）已完成，移到 changelog。P4（架构层改造）暂缓，下次有空再做。编号保留以便和 commit message 对照。
+> 第一轮：P0/P1/P2（2026-05-09）+ P3（2026-05-10 性能）已完成，移到 changelog。
+> 第二轮：Audit-2（2026-05-10）发现 23 项新问题 → S1/S2/S3 待处理（S = Second sweep，避免与已完成的 P 系列编号撞车）。
+> P4（架构层改造）继续暂缓，下次有空再做。
+
+### S1 — 安全 & 致命 bug（必先修，~2-3 小时）
+
+- [x] **S1.1** 密码哈希换 BCrypt（2026-05-10）：删 `ForumUtil.md5` + Flyway V3 删 `user.salt` 列 + `User` 实体去 `salt` 字段；`UserServiceImpl#register/login/updatePassword` 三处全部走 `BCryptPasswordEncoder.encode/matches`；顺手修复 `updatePassword` 里"newPassword.equals(oldPassword)"的 latent bug（旧代码 `oldPassword` 早已被覆盖成 hash）
+- [x] **S1.2** Avatar GET 路径遍历漏洞（2026-05-10）：`UserController.avatar` 加白名单正则 `^[a-zA-Z0-9-]+\.(jpg|jpeg|png)$` + `Path.resolve().normalize()` + `startsWith(baseDir)` 双层防御
+- [ ] **S1.3** Avatar 上传无后缀文件抛 `StringIndexOutOfBoundsException`：`UserController.uploadAvatar:80` `original.substring(original.lastIndexOf("."))` 在无 dot 时 substring(-1) 异常 → GlobalExceptionHandler 兜底 500 而非预期的 400。先判 `dot < 0` 再 substring
+- [ ] **S1.4** Avatar 上传 IOException 抛 `RuntimeException` 而非 `BizException`：`UserController.uploadAvatar:92` 走兜底 500 丢失上下文，定义 `UploadFailedException extends BizException`
+
+### S2 — 正确性 bug（~半天到 1 天）
+
+- [ ] **S2.1** `findDiscussPostById` 帖子不存在必 NPE：`DiscussPostServiceImpl:128-135` `selectById` 返回 null 后立刻 `discussPost.getUserId()`。`PostController.detail` 写的 `if (postItem.discussPost() == null)` 永远走不到。Service 第一行加 null 检查
+- [ ] **S2.2** `PostController.detail:88-95` 不过滤软删帖子。同文件 `requirePostExists` 已经做了 `post.isDeleted()` 检查，但 detail 没用上
+- [ ] **S2.3** `CommentController.add:55, 64` 校验顺序错 → 孤儿评论：先 `addComment` 入库 + refresh post.comment_count，后 `resolveTargetOwner` 校验 entity 存在抛 404。`resolveTargetOwner` 提前到 insert 之前
+- [ ] **S2.4** `FollowServiceImpl#follow/unfollow:62-79` 非幂等 → 计数漂移：Redis zadd/zrem 幂等但 FollowEvent 每次都发，listener +1/-1 累加。前端双击就漂。Lua 脚本里返回是否 first-time，service 据此决定要不要发事件
+- [ ] **S2.5** `PostScoreRefreshJob:55-72` 给软删帖子重新索引 ES：refresh 只判 `post == null` 不判 `post.isDeleted()`。删除事件先到把 ES 干掉、score job 后到又塞回去
+- [ ] **S2.6** `SearchIndexEventConsumer.handlePublish:40-43` 同样问题：`if (post != null)` 改 `if (post != null && !post.isDeleted())`
+- [ ] **S2.7** `EventProducer:23-28` 静默吞 `JsonProcessingException`：序列化失败 caller 不知道，事件直接丢。改抛出
+- [ ] **S2.8** Notification / SearchIndex 消费者无幂等（Kafka at-least-once）→ 重复通知 / 重复索引。`message` 表加 `(from_id, to_id, conversation_id, content_hash)` 唯一索引或 event-id 去重表
+- [ ] **S2.9** `UserStatsEventListener:25-46` row 缺失静默 no-op：UPDATE 0 行没有任何信号。返回值 0 行抛 `IllegalStateException` 或至少 warn 日志
+- [ ] **S2.10** `DataServiceImpl:55-57, 84-87` UV/DAU 合并查询临时 key 无 TTL → 内存泄漏：每次区间不同就生成一个新 key 永久堆积。`union/bitOp` 完立刻 `expire(redisKey, Duration.ofMinutes(10))`
+- [ ] **S2.11** Like / Comment 写前不校验 entity 存在：`LikeController.toggle` 直接给 Redis 加成员、`CommentController.add` 直接 insert。Service 入口加 `requirePostOrCommentExists(entityType, entityId)`
+
+### S3 — DDD & 一致性收尾（~半天）
+
+- [ ] **S3.1** `ServiceLogAspect:36` 用 `SimpleDateFormat`（违反 CLAUDE.md P0 changelog 宣称的"已统一 DateTimeFormatter"）。改 `static final DateTimeFormatter`
+- [ ] **S3.2** 实体 Lombok 风格 split：`User`/`Comment`/`Message` 是 `@Getter @Builder @NoArgsConstructor @AllArgsConstructor`，`UserStatistics` 是 `@Getter @Builder`，**`DiscussPost` 是 `@Builder @Getter`（缺 NoArgs/AllArgs）**。Project Highlight 1 大谈"实体 immutable + 反射 fallback"，面试官抽查到 DiscussPost 反问就尴尬。统一一种风格
+- [ ] **S3.3** `PostItem` record 直接持有 `DiscussPost` domain entity → controller 把 `postItem.discussPost()` 喂给 VO 构造，等于 domain 实体被 interfaces 层直接消费。改成结构性字段（id/title/content/score/...）或独立的 application DTO
+- [ ] **S3.4** `DiscussPostServiceImpl#refreshCommentCount/updateScore:103-114` select-then-update 反 pattern：两次 SQL + 并发不安全。改成单 UPDATE（mapper 加 `updateCommentCount(id, count)` / `updateScore(id, score)`），校验提到入参侧
+- [ ] **S3.5** `insertDiscussPost` / `addComment` / `addMessage` 三个 service 都有"用 builder 重建入参实体"的 ~20 行模板代码。抽公共逻辑或改 controller 直接传 DTO 由 service 内部一次构造 entity
+- [ ] **S3.6** `FollowController` 缺 class-level `@RequestMapping`，每个方法重复完整路径。其他 controller 都用 `@RequestMapping("/api/v1/...")` 配类
+- [ ] **S3.7** `PostController.detail:88` 入参 `@AuthenticationPrincipal User me` 未使用。要么删，要么用上（返回当前用户的 likeStatus）
+- [ ] **S3.8** `User.canActivateWith:51` `activationCode.equals(code)` 改 `Objects.equals` 防 NPE
+- [ ] **S3.9** `ServiceLogAspect:29` 注释引用已删的 `org.example.nowcoder` 包路径（P6 删除）。要么更新要么删整个 aspect（信息价值低）
 
 ### P4 — 架构（工作量大，简历项目可暂缓）
 
@@ -240,8 +276,12 @@ com.example.<module>/
 
 ### 推荐执行顺序
 
-1. **P5** — 阶段性收口（测试 + 简历 + 面试话术）
-2. **P4** — 架构层改造，简历项目可暂缓（拆 shared、Kafka 事件类型化、Quartz JDBC 化等）
+1. **S1** — 安全 & 致命 bug（密码 + 路径遍历 + 上传异常，~2-3 小时）—— 面试硬伤优先
+2. **S2** — 正确性 bug（NPE / 软删 / 幂等 / 一致性，~半天到 1 天）
+3. **P5.1** — 给读模型 + 事件监听器写测试（半天到 1 天）—— 简历亮点不能没测试
+4. **S3** — DDD & 一致性收尾（~半天）
+5. **P5.2~5.4** — 简历 / 面试话术 / 博客
+6. **P4** — 架构层改造，简历项目可暂缓
 
 ---
 
@@ -273,3 +313,60 @@ com.example.<module>/
 效果：原来 `1 + 1 + N×3` 次查询（N=pageSize），现在固定 2 次 comment + 1 次 user，不随 pageSize 增长。新增 `/api/v1/comments/{id}/replies` 分页接口供前端"展开更多回复"。
 
 > **踩过的坑**：`./mvnw -pl system spring-boot:run` 不带 `-am` 不会重建上游 `interaction` 模块，第一次测试发现窗口函数日志根本没出现 —— 加载的是 `~/.m2/` 里的旧 JAR。跨模块改动后必须 `./mvnw clean install -DskipTests` 或 `-pl system -am spring-boot:run`。
+
+### 3. 密码哈希现代化：从 MD5+5字符 salt 到 BCrypt
+
+旧实现把 `MD5(password + 5字符 salt)` 直接存库。三个独立问题，越往下越致命：
+
+1. **MD5 太快**：现代 GPU 跑 MD5 是 ~100 亿 hash/秒（Hashcat 在 RTX 4090 实测）。8 位字母数字密码（62^8 ≈ 2×10^14）6 小时穷举完。BCrypt strength=10 只有 ~1000 hash/秒，慢 7 个数量级，同一台 GPU 暴破时间从小时级变成宇宙级。
+2. **5 字符 hex salt 只有 100 万种可能**：攻击者拿到全表 dump 可以预先对每种 salt 计算 "top 1000 常用密码" 的 MD5，几十 GB SSD 装得下，任何用户用 `123456789` + 任何 salt 秒查。正常 salt 应该是 16 字节随机（2^128 种），让彩虹表预计算永远不可能。
+3. **MD5 已破** —— 2004 王小云团队找到第一个碰撞、2008 实用化，密码学社区共识"非密码用途也别再用"。面试官看到 `DigestUtils.md5DigestAsHex` 立刻减分。
+
+替换成 `BCryptPasswordEncoder`（Spring Security 自带），三个核心特性：
+
+| 特性 | 收益 |
+|---|---|
+| 自适应工作因子 cost=10（2^10 轮 Eksblowfish） | 每年 +1 cost 抵消摩尔定律算力增长 |
+| 16 字节随机 salt 内嵌 hash 字符串 | 不需要单独 `salt` 列，schema 简化 |
+| 自描述格式 `$2a$10$<22字符salt><31字符hash>` | 可平滑用 `DelegatingPasswordEncoder` 迁移到 Argon2id（2015 年密码哈希竞赛冠军） |
+
+代码改动：3 处 `md5(...) + String.equals` 全部换成 `passwordEncoder.matches(raw, hash)`；Flyway V3 删 `user.salt` 列；`User` 实体去 `salt` 字段；删除 `ForumUtil.md5` 方法。
+
+**意外收获**：旧 `updatePassword` 有个 latent bug —— 校验"新密码不能等于旧密码"用 `newPassword.equals(oldPassword)`，但前面几行 `oldPassword = md5(oldPassword + salt)` 早把 `oldPassword` 变量覆盖成 hash，所以这个等价检查永远是 false。BCrypt 重写改成 `passwordEncoder.matches(newPassword, user.getPassword())` 顺手修了 —— 同一个 hash 永远 match 自己原文。
+
+### 4. 路径遍历漏洞：字符串防御 vs 路径语义防御
+
+旧 avatar GET 接口直接拼 `new File(uploadPath, filename)`，且 SecurityConfig 把这个路径配成 `permitAll`。攻击者：
+
+```
+GET /api/v1/users/avatar/..%2F..%2F..%2F.env
+```
+
+`%2F` 是 URL 编码的 `/`。Spring `@PathVariable` 自动解码，filename 实际是 `../../../.env`，操作系统层 `File.exists()` 会自动 normalize 路径，最终读到项目根的 `.env`（**含 MySQL 密码 + 邮箱密码**）。`isFile()` 对 `/etc/passwd` 也是 `true`，攻击者能拿任意可读文件。
+
+**为什么常见的字符串防御都不够**：
+- `if (filename.contains(".."))` —— `....//`、`%2e%2e%2f`、Unicode normalization 多种绕法
+- `filename.replaceAll("..", "")` —— 把合法 `image..png` 也截断，且 `....///` 替换后还是 `..//`
+
+**正确解法是双层防御**：
+
+```java
+private static final Pattern AVATAR_FILENAME =
+        Pattern.compile("^[a-zA-Z0-9-]+\\.(jpg|jpeg|png)$");
+
+// 第一层：白名单（语法级）
+if (!AVATAR_FILENAME.matcher(filename).matches()) return 404;
+
+// 第二层：路径包含（语义级）
+Path baseDir = Path.of(uploadPath).toAbsolutePath().normalize();
+Path resolved = baseDir.resolve(filename).normalize();
+if (!resolved.startsWith(baseDir)) return 404;
+```
+
+第一层挡住 99% 的 payload；第二层是 backstop —— 将来谁把白名单放宽（比如加 `.gif`）忘了路径检查，第二层依然能阻止越界。
+
+> **关键 API 细节**：
+> - `Path.normalize()` 会 resolve `.` 和 `..` 段；不 normalize 直接 `startsWith` 没用。
+> - `toAbsolutePath()` 必须在 `normalize()` 之前 —— 相对路径里的 `.` 不会被 resolve 到 cwd。
+> - `Path.startsWith` 是按路径段比较（不是字符串前缀），不会把 `/upload-bad/foo` 误判为 `/upload/foo` 的前缀。
+> - 两层都返回 404（不区分"格式错"和"文件不存在"），避免给攻击者枚举信息。
