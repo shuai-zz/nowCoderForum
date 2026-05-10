@@ -15,6 +15,7 @@ public class RedisKeyUtil {
     private static final String PREFIX_UV = "uv";
     private static final String PREFIX_DAU = "dau";
     private static final String PREFIX_POST = "post";
+    private static final String PREFIX_EVENT_PROCESSED = "event:processed";
 
     // 某个实体的赞
     // like:entity:entityType:entityId -> set(userId)
@@ -78,5 +79,11 @@ public class RedisKeyUtil {
     // 帖子分数
     public static String getPostScore(){
         return PREFIX_POST+SPLIT+"score";
+    }
+
+    // 已处理的事件（消费者幂等去重）
+    // event:processed:{eventId} -> "1"  (TTL ~24h)
+    public static String getProcessedEventKey(String eventId) {
+        return PREFIX_EVENT_PROCESSED + SPLIT + eventId;
     }
 }

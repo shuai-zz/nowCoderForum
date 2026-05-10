@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import com.example.shared.messaging.Event;
+import com.example.shared.messaging.EventIdempotencyGuard;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -29,11 +30,14 @@ public class NotificationEventConsumer {
 
     private final MessageService messageService;
     private final ObjectMapper objectMapper;
+    private final EventIdempotencyGuard idempotencyGuard;
 
     @KafkaListener(topics = {TOPIC_COMMENT, TOPIC_LIKE, TOPIC_FOLLOW})
     public void handleNotification(ConsumerRecord<String, String> record) {
         Event event = parseEvent(record);
         if (event == null) return;
+        // Kafka at-least-once：重复消费会重复 INSERT message，必须先以 eventId 去重。
+        if (!idempotencyGuard.tryAcquire(event)) return;
 
         Map<String, Object> content = new LinkedHashMap<>();
         content.put("userId", event.getUserId());

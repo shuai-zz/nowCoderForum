@@ -8,6 +8,8 @@ import java.util.Map;
  */
 public class Event {
 
+    /** 事件唯一 id，由 EventProducer 在发送时填充。消费侧用作幂等 key。 */
+    private String eventId;
     private String topic;
     // 用户id
     private int userId;
@@ -18,6 +20,15 @@ public class Event {
     // 实体作者Id
     private int entityUserId;
     private Map<String, Object> data = new HashMap<>();
+
+    public String getEventId() {
+        return eventId;
+    }
+
+    public Event setEventId(String eventId) {
+        this.eventId = eventId;
+        return this;
+    }
 
     public String getTopic() {
         return topic;

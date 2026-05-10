@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import com.example.shared.messaging.Event;
+import com.example.shared.messaging.EventIdempotencyGuard;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -31,11 +32,16 @@ public class SearchIndexEventConsumer {
     private final DiscussPostService discussPostService;
     private final ElasticSearchService elasticSearchService;
     private final ObjectMapper objectMapper;
+    private final EventIdempotencyGuard idempotencyGuard;
 
     @KafkaListener(topics = {TOPIC_PUBLISH})
     public void handlePublish(ConsumerRecord<String, String> record) {
         Event event = parseEvent(record);
         if (event == null) {
+            return;
+        }
+        // ES upsert 本身幂等，但重复处理仍是浪费的网络/CPU；用 eventId 短路
+        if (!idempotencyGuard.tryAcquire(event)) {
             return;
         }
         DiscussPost post = discussPostService.getRawPost(event.getEntityId());
@@ -50,6 +56,9 @@ public class SearchIndexEventConsumer {
     public void handleDelete(ConsumerRecord<String, String> record) {
         Event event = parseEvent(record);
         if (event == null) {
+            return;
+        }
+        if (!idempotencyGuard.tryAcquire(event)) {
             return;
         }
         elasticSearchService.deleteDiscussPost(event.getEntityId());

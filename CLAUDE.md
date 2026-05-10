@@ -239,10 +239,10 @@ com.example.<module>/
 - [x] **S2.4** `FollowServiceImpl#follow/unfollow` 非幂等 → 计数漂移（2026-05-10）：FOLLOW_LUA 改用 `local added = redis.call('zadd', ...); return added`，UNFOLLOW_LUA 同模式返回 `removed`。service 仅在 `result == 1` 时发 FollowEvent/UnfollowEvent，前端连点不再让 `user_statistics.follower_count` 漂
 - [x] **S2.5** `PostScoreRefreshJob` 给软删帖子重新索引 ES（2026-05-10）：refresh 中 post 非空后再判 `isDeleted()` 直接 return（log.debug，软删属正常流程）
 - [x] **S2.6** `SearchIndexEventConsumer.handlePublish` 同样问题（2026-05-10）：`if (post != null)` 改成 `post == null || post.isDeleted()` 提前 return
-- [ ] **S2.7** `EventProducer:23-28` 静默吞 `JsonProcessingException`：序列化失败 caller 不知道，事件直接丢。改抛出
-- [ ] **S2.8** Notification / SearchIndex 消费者无幂等（Kafka at-least-once）→ 重复通知 / 重复索引。`message` 表加 `(from_id, to_id, conversation_id, content_hash)` 唯一索引或 event-id 去重表
-- [ ] **S2.9** `UserStatsEventListener:25-46` row 缺失静默 no-op：UPDATE 0 行没有任何信号。返回值 0 行抛 `IllegalStateException` 或至少 warn 日志
-- [ ] **S2.10** `DataServiceImpl:55-57, 84-87` UV/DAU 合并查询临时 key 无 TTL → 内存泄漏：每次区间不同就生成一个新 key 永久堆积。`union/bitOp` 完立刻 `expire(redisKey, Duration.ofMinutes(10))`
+- [x] **S2.7** `EventProducer` 静默吞 `JsonProcessingException`（2026-05-10）：catch 后追加 `throw new IllegalStateException("Event serialization failed: " + topic, e)`，把"事件丢失"从沉默 bug 升级为显式失败；保留 log.error 便于排查
+- [x] **S2.8** Notification / SearchIndex 消费者无幂等（2026-05-10）：`Event` 增加 `eventId` 字段（UUID），`EventProducer.fireEvent` 在投递前自动填充；新建 `EventIdempotencyGuard`（Redis SETNX with TTL=24h）守卫两个 consumer 入口；`RedisKeyUtil.getProcessedEventKey(eventId)` key 约定。Kafka at-least-once 重投递不再产生重复通知 / 重复 ES 写入
+- [x] **S2.9** `UserStatsEventListener` row 缺失静默 no-op（2026-05-10）：所有 `incrementXxx` 返回值检查，0 行命中走 `warnIfMissing(...)` log.warn 并附带 op + userId；不抛异常以避免回滚上游 Redis 操作（最终一致性策略）
+- [x] **S2.10** `DataServiceImpl` UV/DAU 合并查询临时 key 无 TTL（2026-05-10）：`calculateUv` / `calculateDau` 在 union/bitOp 之后立刻 `redisTemplate.expire(mergedKey, Duration.ofMinutes(10))`，10 分钟足够 admin 面板渲染，过期后 redis 自动回收
 - [x] **S2.11** Like / Comment 写前不校验 entity 存在（2026-05-10）：抽 `EntityExistenceChecker`（POST 走 `getRawPost` + `isDeleted` 检查；COMMENT 走 `commentMapper.selectById` + `status != 0` 检查），在 `LikeServiceImpl.like` 与 `CommentServiceImpl.addComment` 入口先 `requireExists`，杜绝脏 Redis Set 与孤儿评论。注：用 mapper 而非 CommentService 避免 LikeService↔CommentService 循环依赖
 
 ### S3 — DDD & 一致性收尾（~半天）

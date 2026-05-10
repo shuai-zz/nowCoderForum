@@ -8,6 +8,7 @@ import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -28,6 +29,12 @@ public class DataServiceImpl implements DataService {
      * {@code SimpleDateFormat} 不行（内部持可变 Calendar 状态），并发下会写出脏 Redis key。
      */
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+    /**
+     * UV/DAU 区间合并 key 的 TTL。每次区间不同就生成新 key，没 TTL 永久堆积。
+     * 10 分钟足够 admin 面板展示完毕，过期后 redis 自动回收。
+     */
+    private static final Duration MERGED_KEY_TTL = Duration.ofMinutes(10);
 
     //记录UV数据，记录指定IP
     @Override
@@ -54,6 +61,7 @@ public class DataServiceImpl implements DataService {
         // 合并数据
         String redisKey = RedisKeyUtil.getUvKey(formatDate(start), formatDate(end));
         redisTemplate.opsForHyperLogLog().union(redisKey, keyList.toArray(new String[0]));
+        redisTemplate.expire(redisKey, MERGED_KEY_TTL);
         return redisTemplate.opsForHyperLogLog().size(redisKey);
     }
 
@@ -80,11 +88,12 @@ public class DataServiceImpl implements DataService {
             calendar.add(Calendar.DATE, 1);
         }
 
+        String mergedKey = RedisKeyUtil.getDauKey(formatDate(start), formatDate(end));
         Long result = redisTemplate.execute((RedisCallback<Long>) connection -> {
-            String redisKey = RedisKeyUtil.getDauKey(formatDate(start), formatDate(end));
-            connection.stringCommands().bitOp(RedisConnection.BitOperation.OR, redisKey.getBytes(), keyList.toArray(new byte[0][0]));
-            return connection.stringCommands().bitCount(redisKey.getBytes());
+            connection.stringCommands().bitOp(RedisConnection.BitOperation.OR, mergedKey.getBytes(), keyList.toArray(new byte[0][0]));
+            return connection.stringCommands().bitCount(mergedKey.getBytes());
         });
+        redisTemplate.expire(mergedKey, MERGED_KEY_TTL);
         return result != null ? result : 0L;
     }
 
