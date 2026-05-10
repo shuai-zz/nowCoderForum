@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -38,6 +39,7 @@ import static com.example.shared.constant.ForumConstant.TOPIC_FOLLOW;
  */
 @Tag(name = "Follow", description = "关注 / 取关 / 关注列表 / 粉丝列表")
 @RestController
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class FollowController {
 
@@ -46,7 +48,7 @@ public class FollowController {
     private final EventProducer eventProducer;
 
     @Operation(summary = "关注")
-    @PostMapping("/api/v1/follows")
+    @PostMapping("/follows")
     public Result<Void> follow(@AuthenticationPrincipal User me, @Valid @RequestBody FollowRequest req) {
         int entityUserId = req.entityType() == ENTITY_TYPE_USER ? req.entityId() : 0;
         followService.follow(me.getId(), req.entityType(), req.entityId(), entityUserId);
@@ -61,7 +63,7 @@ public class FollowController {
     }
 
     @Operation(summary = "取消关注")
-    @DeleteMapping("/api/v1/follows/{entityType}/{entityId}")
+    @DeleteMapping("/follows/{entityType}/{entityId}")
     public Result<Void> unfollow(@AuthenticationPrincipal User me, @PathVariable int entityType, @PathVariable int entityId) {
         int entityUserId = entityType == ENTITY_TYPE_USER ? entityId : 0;
         followService.unfollow(me.getId(), entityType, entityId, entityUserId);
@@ -69,7 +71,7 @@ public class FollowController {
     }
 
     @Operation(summary = "用户关注列表")
-    @GetMapping("/api/v1/users/{userId}/followees")
+    @GetMapping("/users/{userId}/followees")
     public Result<PageResult<FollowUserVO>> followees(
             @AuthenticationPrincipal User me,
             @PathVariable int userId,
@@ -86,7 +88,7 @@ public class FollowController {
     }
 
     @Operation(summary = "用户粉丝列表")
-    @GetMapping("/api/v1/users/{userId}/followers")
+    @GetMapping("/users/{userId}/followers")
     public Result<PageResult<FollowUserVO>> followers(
             @AuthenticationPrincipal User me,
             @PathVariable int userId,

@@ -4,9 +4,10 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.example.shared.exception.ValidationException;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -20,8 +21,10 @@ import java.util.Date;
  * @author 23211
  */
 @TableName("discuss_post")
-@Builder
 @Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class DiscussPost {
     @TableId(type = IdType.AUTO)
     private int id;
@@ -88,5 +91,14 @@ public class DiscussPost {
             throw new ValidationException("score cannot be negative");
         }
         this.score = score;
+    }
+
+    /**
+     * 写入持久化前替换为净化后的标题/正文。
+     * 由 application service 在调用 ContentSanitizer 后回填，避免 service 用 builder 重建整个实体。
+     */
+    public void applySanitizedContent(String sanitizedTitle, String sanitizedContent) {
+        this.title = sanitizedTitle;
+        this.content = sanitizedContent;
     }
 }

@@ -247,15 +247,15 @@ com.example.<module>/
 
 ### S3 — DDD & 一致性收尾（~半天）
 
-- [ ] **S3.1** `ServiceLogAspect:36` 用 `SimpleDateFormat`（违反 CLAUDE.md P0 changelog 宣称的"已统一 DateTimeFormatter"）。改 `static final DateTimeFormatter`
-- [ ] **S3.2** 实体 Lombok 风格 split：`User`/`Comment`/`Message` 是 `@Getter @Builder @NoArgsConstructor @AllArgsConstructor`，`UserStatistics` 是 `@Getter @Builder`，**`DiscussPost` 是 `@Builder @Getter`（缺 NoArgs/AllArgs）**。Project Highlight 1 大谈"实体 immutable + 反射 fallback"，面试官抽查到 DiscussPost 反问就尴尬。统一一种风格
-- [ ] **S3.3** `PostItem` record 直接持有 `DiscussPost` domain entity → controller 把 `postItem.discussPost()` 喂给 VO 构造，等于 domain 实体被 interfaces 层直接消费。改成结构性字段（id/title/content/score/...）或独立的 application DTO
-- [ ] **S3.4** `DiscussPostServiceImpl#refreshCommentCount/updateScore:103-114` select-then-update 反 pattern：两次 SQL + 并发不安全。改成单 UPDATE（mapper 加 `updateCommentCount(id, count)` / `updateScore(id, score)`），校验提到入参侧
-- [ ] **S3.5** `insertDiscussPost` / `addComment` / `addMessage` 三个 service 都有"用 builder 重建入参实体"的 ~20 行模板代码。抽公共逻辑或改 controller 直接传 DTO 由 service 内部一次构造 entity
-- [ ] **S3.6** `FollowController` 缺 class-level `@RequestMapping`，每个方法重复完整路径。其他 controller 都用 `@RequestMapping("/api/v1/...")` 配类
-- [ ] **S3.7** `PostController.detail:88` 入参 `@AuthenticationPrincipal User me` 未使用。要么删，要么用上（返回当前用户的 likeStatus）
-- [ ] **S3.8** `User.canActivateWith:51` `activationCode.equals(code)` 改 `Objects.equals` 防 NPE
-- [ ] **S3.9** `ServiceLogAspect:29` 注释引用已删的 `org.example.nowcoder` 包路径（P6 删除）。要么更新要么删整个 aspect（信息价值低）
+- [x] **S3.1** `ServiceLogAspect:36` 用 `SimpleDateFormat`（2026-05-11）：换成 `static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")`，`LocalDateTime.now().format(FMT)` —— 不可变 + 线程安全，与 P0 changelog 已经对外宣传的统一基线对齐
+- [x] **S3.2** 实体 Lombok 风格 split（2026-05-11）：`DiscussPost` 补齐 `@NoArgsConstructor` + `@AllArgsConstructor`，统一与 `User` / `Comment` / `Message` 一致的 `@Getter @Builder @NoArgsConstructor @AllArgsConstructor` 四件套；面试官抽查实体不会再露馅
+- [x] **S3.3** `PostItem` record 直接持有 `DiscussPost` domain entity（2026-05-11）：改成结构性字段（id/title/content/type/status/commentCount/score/createTime + author/likeCount/likeStatus），新增 `PostItem.from(post, ...)` / `PostItem.missing(author)` / `isMissing()`；`PostListItemVO.of(item, author)` 与 `PostDetailVO.of(item, author)` 直接接受 PostItem，interfaces 层不再消费 domain entity
+- [x] **S3.4** `DiscussPostServiceImpl#refreshCommentCount/updateScore` select-then-update 反 pattern（2026-05-11）：`DiscussPostMapper` 新增 `updateCommentCount(id, count)` / `updateScore(id, score)`，service 入参侧做 `count >= 0 / score >= 0` 校验后单 UPDATE；并发安全且 SQL 减半
+- [x] **S3.5** `insertDiscussPost` / `addComment` / `addMessage` builder 重建模板代码（2026-05-11）：DiscussPost / Comment / Message 各加一个 `applySanitizedContent(...)` domain 方法，service 直接调用 + insert，省掉三处 ~20 行的 builder 重建
+- [x] **S3.6** `FollowController` 缺 class-level `@RequestMapping`（2026-05-11）：加 `@RequestMapping("/api/v1")`，方法路径瘦身为 `/follows`、`/follows/{type}/{id}`、`/users/{userId}/followees`、`/users/{userId}/followers`
+- [x] **S3.7** `PostController.detail:88` 入参 `@AuthenticationPrincipal User me` 未使用（2026-05-11）：直接删除，未登录用户 detail 仍 permitAll 可访问，如未来要加 likeStatus 再补
+- [x] **S3.8** `User.canActivateWith` `activationCode.equals(code)` 防 NPE（2026-05-11）：改 `Objects.equals(activationCode, code)`，activationCode 列虽 NOT NULL DEFAULT '' 但代码不应假设永远非空
+- [x] **S3.9** `ServiceLogAspect:29` 引用已删 `org.example.nowcoder` 包路径（2026-05-11）：删除整段 P6 历史注释
 
 ### P4 — 架构（工作量大，简历项目可暂缓）
 

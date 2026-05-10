@@ -156,15 +156,11 @@ public class MessageServiceImpl implements MessageService {
 
 
     @Override
-    public int addMessage(Message rawMessage) {
-        Message message = Message.builder()
-                .fromId(rawMessage.getFromId())
-                .toId(rawMessage.getToId())
-                .conversationId(rawMessage.getConversationId())
-                .content(contentSanitizer.sanitize(rawMessage.getContent()))
-                .status(rawMessage.getStatus())
-                .createTime(rawMessage.getCreateTime())
-                .build();
+    public int addMessage(Message message) {
+        if (message == null) {
+            throw new IllegalArgumentException("parameter cannot be null");
+        }
+        message.applySanitizedContent(contentSanitizer.sanitize(message.getContent()));
         return messageMapper.insertMessage(message);
     }
 

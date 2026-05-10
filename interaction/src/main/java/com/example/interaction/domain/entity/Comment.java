@@ -53,4 +53,12 @@ public class Comment {
         return entityType == ForumConstant.ENTITY_TYPE_COMMENT;
     }
 
+    /**
+     * 写入持久化前替换为净化后的正文。
+     * 由 application service 在调用 ContentSanitizer 后回填，避免 service 用 builder 重建整个实体。
+     */
+    public void applySanitizedContent(String sanitizedContent) {
+        this.content = sanitizedContent;
+    }
+
 }

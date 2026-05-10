@@ -52,10 +52,7 @@ public class PostController {
         int uid = userId == null ? ALL_USERS : userId;
         PageData<PostItem> pageData = discussPostService.selectDiscussPosts(pageNum, pageSize, uid);
         List<PostListItemVO> list = pageData.items().stream()
-                .map(item -> {
-                    UserVO userVo = UserVO.from(item.author());
-                    return PostListItemVO.of(item.discussPost(), userVo, item.likeCount());
-                })
+                .map(item -> PostListItemVO.of(item, UserVO.from(item.author())))
                 .toList();
 
         return Result.ok(PageResult.of(list, pageData.total(), pageNum, pageSize));
@@ -85,14 +82,14 @@ public class PostController {
 
     @Operation(summary = "帖子详情")
     @GetMapping("/{id}")
-    public Result<PostDetailVO> detail(@AuthenticationPrincipal User me, @PathVariable int id) {
+    public Result<PostDetailVO> detail(@PathVariable int id) {
         requirePostExists(id);
         PostItem postItem = discussPostService.findDiscussPostById(id);
-        if (postItem.discussPost() == null) {
+        if (postItem.isMissing()) {
             throw new ResourceNotFoundException("Post not found: " + id);
         }
 
-        return Result.ok(PostDetailVO.of(postItem.discussPost(), UserVO.from(postItem.author()), postItem.likeCount()));
+        return Result.ok(PostDetailVO.of(postItem, UserVO.from(postItem.author())));
     }
 
     @Operation(summary = "置顶（moderator）")

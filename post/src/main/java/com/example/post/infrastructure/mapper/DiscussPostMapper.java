@@ -26,4 +26,18 @@ public interface DiscussPostMapper extends BaseMapper<DiscussPost> {
                 .setSql("like_count = like_count + {0}", delta)
                 .eq(DiscussPost::getId, id));
     }
+
+    @SuppressWarnings({"MybatisPlusMapperMethodInspection"})
+    default int updateCommentCount(int id, int count) {
+        return update(null, Wrappers.<DiscussPost>lambdaUpdate()
+                .set(DiscussPost::getCommentCount, count)
+                .eq(DiscussPost::getId, id));
+    }
+
+    @SuppressWarnings({"MybatisPlusMapperMethodInspection"})
+    default int updateScore(int id, double score) {
+        return update(null, Wrappers.<DiscussPost>lambdaUpdate()
+                .set(DiscussPost::getScore, score)
+                .eq(DiscussPost::getId, id));
+    }
 }

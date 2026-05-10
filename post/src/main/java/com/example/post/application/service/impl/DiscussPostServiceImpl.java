@@ -7,6 +7,7 @@ import com.example.post.domain.entity.DiscussPost;
 import com.example.post.infrastructure.mapper.DiscussPostMapper;
 import com.example.shared.domain.ContentSanitizer;
 import com.example.shared.dto.AuthorRef;
+import com.example.shared.exception.ValidationException;
 import com.example.shared.result.PageData;
 import com.example.shared.utils.RedisKeyUtil;
 import com.example.user.application.service.UserService;
@@ -50,7 +51,7 @@ public class DiscussPostServiceImpl
                     AuthorRef author = user == null
                             ? AuthorRef.deleted()
                             : AuthorRef.of(user.getId(), user.getUsername(), user.getAvatarUrl());
-                    return new PostItem(post, author, post.getLikeCount(), 0);
+                    return PostItem.from(post, author, post.getLikeCount(), 0);
                 })
                 .toList();
         return new PageData<>(list, page.getTotal());
@@ -62,23 +63,11 @@ public class DiscussPostServiceImpl
             throw new IllegalArgumentException("post cannot be null");
         }
         // 转译HTML && 过滤敏感词
-        String title = contentSanitizer.sanitize(discussPost.getTitle());
-        String content = contentSanitizer.sanitize(discussPost.getContent());
-
-        DiscussPost post = DiscussPost.builder()
-                .userId(discussPost.getUserId())
-                .title(title)
-                .content(content)
-                .type(discussPost.getType())
-                .status(discussPost.getStatus())
-                .createTime(discussPost.getCreateTime())
-                .commentCount(discussPost.getCommentCount())
-                .likeCount(discussPost.getLikeCount())
-                .score(discussPost.getScore())
-                .build();
-
-
-        return discussPostMapper.insert(post);
+        discussPost.applySanitizedContent(
+                contentSanitizer.sanitize(discussPost.getTitle()),
+                contentSanitizer.sanitize(discussPost.getContent())
+        );
+        return discussPostMapper.insert(discussPost);
     }
 
     @Override
@@ -101,16 +90,18 @@ public class DiscussPostServiceImpl
 
     @Override
     public void refreshCommentCount(int postId, int count) {
-        DiscussPost discussPost = discussPostMapper.selectById(postId);
-        discussPost.refreshCommentCount(count);
-        discussPostMapper.updateById(discussPost);
+        if (count < 0) {
+            throw new ValidationException("comment count cannot be negative");
+        }
+        discussPostMapper.updateCommentCount(postId, count);
     }
 
     @Override
     public void updateScore(int postId, double score) {
-        DiscussPost discussPost = discussPostMapper.selectById(postId);
-        discussPost.updateScore(score);
-        discussPostMapper.updateById(discussPost);
+        if (score < 0) {
+            throw new ValidationException("score cannot be negative");
+        }
+        discussPostMapper.updateScore(postId, score);
     }
 
     @Override
@@ -128,12 +119,12 @@ public class DiscussPostServiceImpl
     public PostItem findDiscussPostById(int discussPostId) {
         DiscussPost discussPost = discussPostMapper.selectById(discussPostId);
         if (discussPost == null) {
-            return PostItem.of(null, AuthorRef.deleted(), 0, 0);
+            return PostItem.missing(AuthorRef.deleted());
         }
         User auth = userService.getById(discussPost.getUserId());
         AuthorRef author = auth == null
                 ? AuthorRef.deleted()
                 : AuthorRef.of(auth.getId(), auth.getUsername(), auth.getAvatarUrl());
-        return PostItem.of(discussPost, author, discussPost.getLikeCount(), 0);
+        return PostItem.from(discussPost, author, discussPost.getLikeCount(), 0);
     }
 }

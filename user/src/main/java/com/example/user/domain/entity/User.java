@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
+import java.util.Objects;
 
 /**
  * @author 23211
@@ -46,7 +47,7 @@ public class User {
     }
 
     public boolean canActivateWith(String code) {
-        return !isActivated() && activationCode.equals(code);
+        return !isActivated() && Objects.equals(activationCode, code);
     }
 
     public void activate() {

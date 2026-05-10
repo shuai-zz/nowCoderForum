@@ -1,6 +1,6 @@
 package com.example.post.interfaces.vo;
 
-import com.example.post.domain.entity.DiscussPost;
+import com.example.post.application.dto.PostItem;
 import com.example.user.interfaces.vo.UserVO;
 
 import java.util.Date;
@@ -22,18 +22,18 @@ public record PostListItemVO(
 ) {
     private static final int EXCERPT_LENGTH = 150;
 
-    public static PostListItemVO of(DiscussPost post, UserVO author, long likeCount) {
+    public static PostListItemVO of(PostItem item, UserVO author) {
         return new PostListItemVO(
-                post.getId(),
-                post.getTitle(),
-                excerpt(post.getContent()),
+                item.id(),
+                item.title(),
+                excerpt(item.content()),
                 author,
-                post.getCommentCount(),
-                likeCount,
-                post.getType(),
-                post.getStatus(),
-                post.getCreateTime(),
-                post.getScore()
+                item.commentCount(),
+                item.likeCount(),
+                item.type(),
+                item.status(),
+                item.createTime(),
+                item.score()
         );
     }
 

@@ -52,21 +52,12 @@ public class CommentServiceImpl implements CommentService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED, propagation = Propagation.REQUIRED)
     @Override
-    public int addComment(Comment rawComment) {
-        if (rawComment == null) {
+    public int addComment(Comment comment) {
+        if (comment == null) {
             throw new IllegalArgumentException("parameter cannot be null");
         }
-        entityExistenceChecker.requireExists(rawComment.getEntityType(), rawComment.getEntityId());
-        String content = contentSanitizer.sanitize(rawComment.getContent());
-        Comment comment = Comment.builder()
-                .userId(rawComment.getUserId())
-                .entityType(rawComment.getEntityType())
-                .entityId(rawComment.getEntityId())
-                .targetId(rawComment.getTargetId())
-                .content(content)
-                .status(rawComment.getStatus())
-                .createTime(rawComment.getCreateTime())
-                .build();
+        entityExistenceChecker.requireExists(comment.getEntityType(), comment.getEntityId());
+        comment.applySanitizedContent(contentSanitizer.sanitize(comment.getContent()));
 
         int rows = commentMapper.insert(comment);
 

@@ -1,7 +1,7 @@
 package com.example.post.interfaces.vo;
 
 
-import com.example.post.domain.entity.DiscussPost;
+import com.example.post.application.dto.PostItem;
 import com.example.user.interfaces.vo.UserVO;
 
 import java.util.Date;
@@ -23,18 +23,18 @@ public record PostDetailVO(
         Date createTime,
         double score
 ) {
-    public static PostDetailVO of(DiscussPost post, UserVO author, long likeCount) {
+    public static PostDetailVO of(PostItem item, UserVO author) {
         return new PostDetailVO(
-                post.getId(),
-                post.getTitle(),
-                post.getContent(),
+                item.id(),
+                item.title(),
+                item.content(),
                 author,
-                likeCount,
-                post.getCommentCount(),
-                post.getType(),
-                post.getStatus(),
-                post.getCreateTime(),
-                post.getScore()
+                item.likeCount(),
+                item.commentCount(),
+                item.type(),
+                item.status(),
+                item.createTime(),
+                item.score()
         );
     }
 }
