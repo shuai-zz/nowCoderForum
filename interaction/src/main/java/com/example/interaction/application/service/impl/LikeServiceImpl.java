@@ -1,5 +1,6 @@
 package com.example.interaction.application.service.impl;
 
+import com.example.interaction.application.service.EntityExistenceChecker;
 import com.example.interaction.application.service.LikeService;
 import com.example.shared.event.EntityLikedEvent;
 import com.example.shared.event.EntityUnlikedEvent;
@@ -28,6 +29,7 @@ public class LikeServiceImpl implements LikeService {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final ApplicationEventPublisher eventPublisher;
+    private final EntityExistenceChecker entityExistenceChecker;
 
     /**
      * 原子性点赞/取消点赞 Lua 脚本。
@@ -53,6 +55,7 @@ public class LikeServiceImpl implements LikeService {
 
     @Override
     public int like(int userId, int entityType, int entityId, int entityUserId) {
+        entityExistenceChecker.requireExists(entityType, entityId);
         String entityLikeKey = RedisKeyUtil.getEntityLikeKey(entityType, entityId);
         String userLikeKey = RedisKeyUtil.getUserLikeKey(entityUserId);
 

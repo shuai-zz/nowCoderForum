@@ -58,6 +58,10 @@ public class PostScoreRefreshJob implements Job {
             log.error("该帖子不存在：id={}", postId);
             return;
         }
+        if (post.isDeleted()) {
+            log.debug("Skip score refresh for deleted post: id={}", postId);
+            return;
+        }
         long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_POST, postId);
         double score = DiscussPost.calculateScore(
                 post.isWonderful(),

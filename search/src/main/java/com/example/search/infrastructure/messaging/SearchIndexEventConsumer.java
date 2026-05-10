@@ -20,6 +20,7 @@ import static com.example.shared.constant.ForumConstant.TOPIC_PUBLISH;
 /**
  * 搜索索引事件消费者：处理帖子发布/删除事件，同步 Elasticsearch 索引。
  * 归属 search 模块（待实体迁移后迁入）。
+ *
  * @author zhaoshuai
  */
 @Component
@@ -38,9 +39,11 @@ public class SearchIndexEventConsumer {
             return;
         }
         DiscussPost post = discussPostService.getRawPost(event.getEntityId());
-        if (post != null) {
-            elasticSearchService.saveDiscussPost(post);
+        if (post == null || post.isDeleted()) {
+            return;
         }
+        elasticSearchService.saveDiscussPost(post);
+
     }
 
     @KafkaListener(topics = {TOPIC_DELETE})
@@ -58,7 +61,8 @@ public class SearchIndexEventConsumer {
             return null;
         }
         try {
-            return objectMapper.readValue(record.value(), new TypeReference<>() {});
+            return objectMapper.readValue(record.value(), new TypeReference<>() {
+            });
         } catch (JsonProcessingException e) {
             log.error("Failed to parse event payload: {}", record.value(), e);
             return null;

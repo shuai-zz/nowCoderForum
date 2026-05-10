@@ -86,7 +86,7 @@ public class PostController {
     @Operation(summary = "帖子详情")
     @GetMapping("/{id}")
     public Result<PostDetailVO> detail(@AuthenticationPrincipal User me, @PathVariable int id) {
-
+        requirePostExists(id);
         PostItem postItem = discussPostService.findDiscussPostById(id);
         if (postItem.discussPost() == null) {
             throw new ResourceNotFoundException("Post not found: " + id);

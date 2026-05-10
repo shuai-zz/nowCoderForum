@@ -127,6 +127,9 @@ public class DiscussPostServiceImpl
     @Override
     public PostItem findDiscussPostById(int discussPostId) {
         DiscussPost discussPost = discussPostMapper.selectById(discussPostId);
+        if (discussPost == null) {
+            return PostItem.of(null, AuthorRef.deleted(), 0, 0);
+        }
         User auth = userService.getById(discussPost.getUserId());
         AuthorRef author = auth == null
                 ? AuthorRef.deleted()

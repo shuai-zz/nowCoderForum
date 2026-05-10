@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.interaction.application.dto.CommentWithLike;
 import com.example.interaction.application.service.CommentService;
+import com.example.interaction.application.service.EntityExistenceChecker;
 import com.example.interaction.application.service.LikeService;
 import com.example.interaction.domain.entity.Comment;
 import com.example.interaction.infrastructure.mapper.CommentMapper;
@@ -32,6 +33,7 @@ public class CommentServiceImpl implements CommentService {
     private final DiscussPostService discussPostService;
     private final LikeService likeService;
     private final ContentSanitizer contentSanitizer;
+    private final EntityExistenceChecker entityExistenceChecker;
 
     @Override
     public PageData<Comment> findCommentsByEntity(int entityType, int entityId, int pageNum, int pageSize) {
@@ -54,6 +56,7 @@ public class CommentServiceImpl implements CommentService {
         if (rawComment == null) {
             throw new IllegalArgumentException("parameter cannot be null");
         }
+        entityExistenceChecker.requireExists(rawComment.getEntityType(), rawComment.getEntityId());
         String content = contentSanitizer.sanitize(rawComment.getContent());
         Comment comment = Comment.builder()
                 .userId(rawComment.getUserId())

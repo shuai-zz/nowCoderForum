@@ -233,17 +233,17 @@ com.example.<module>/
 
 ### S2 — 正确性 bug（~半天到 1 天）
 
-- [ ] **S2.1** `findDiscussPostById` 帖子不存在必 NPE：`DiscussPostServiceImpl:128-135` `selectById` 返回 null 后立刻 `discussPost.getUserId()`。`PostController.detail` 写的 `if (postItem.discussPost() == null)` 永远走不到。Service 第一行加 null 检查
-- [ ] **S2.2** `PostController.detail:88-95` 不过滤软删帖子。同文件 `requirePostExists` 已经做了 `post.isDeleted()` 检查，但 detail 没用上
+- [x] **S2.1** `findDiscussPostById` 帖子不存在必 NPE（2026-05-10）：`DiscussPostServiceImpl` selectById 之后加 `discussPost == null` 短路，返回 `PostItem.of(null, AuthorRef.deleted(), 0, 0)` 让 `PostController.detail` 的 `if (postItem.discussPost() == null)` 分支真正走得到
+- [x] **S2.2** `PostController.detail` 不过滤软删帖子（2026-05-10）：detail 方法首行调用 `requirePostExists(id)`，复用同文件已有的 null + isDeleted 校验
 - [ ] **S2.3** `CommentController.add:55, 64` 校验顺序错 → 孤儿评论：先 `addComment` 入库 + refresh post.comment_count，后 `resolveTargetOwner` 校验 entity 存在抛 404。`resolveTargetOwner` 提前到 insert 之前
 - [ ] **S2.4** `FollowServiceImpl#follow/unfollow:62-79` 非幂等 → 计数漂移：Redis zadd/zrem 幂等但 FollowEvent 每次都发，listener +1/-1 累加。前端双击就漂。Lua 脚本里返回是否 first-time，service 据此决定要不要发事件
-- [ ] **S2.5** `PostScoreRefreshJob:55-72` 给软删帖子重新索引 ES：refresh 只判 `post == null` 不判 `post.isDeleted()`。删除事件先到把 ES 干掉、score job 后到又塞回去
-- [ ] **S2.6** `SearchIndexEventConsumer.handlePublish:40-43` 同样问题：`if (post != null)` 改 `if (post != null && !post.isDeleted())`
+- [x] **S2.5** `PostScoreRefreshJob` 给软删帖子重新索引 ES（2026-05-10）：refresh 中 post 非空后再判 `isDeleted()` 直接 return（log.debug，软删属正常流程）
+- [x] **S2.6** `SearchIndexEventConsumer.handlePublish` 同样问题（2026-05-10）：`if (post != null)` 改成 `post == null || post.isDeleted()` 提前 return
 - [ ] **S2.7** `EventProducer:23-28` 静默吞 `JsonProcessingException`：序列化失败 caller 不知道，事件直接丢。改抛出
 - [ ] **S2.8** Notification / SearchIndex 消费者无幂等（Kafka at-least-once）→ 重复通知 / 重复索引。`message` 表加 `(from_id, to_id, conversation_id, content_hash)` 唯一索引或 event-id 去重表
 - [ ] **S2.9** `UserStatsEventListener:25-46` row 缺失静默 no-op：UPDATE 0 行没有任何信号。返回值 0 行抛 `IllegalStateException` 或至少 warn 日志
 - [ ] **S2.10** `DataServiceImpl:55-57, 84-87` UV/DAU 合并查询临时 key 无 TTL → 内存泄漏：每次区间不同就生成一个新 key 永久堆积。`union/bitOp` 完立刻 `expire(redisKey, Duration.ofMinutes(10))`
-- [ ] **S2.11** Like / Comment 写前不校验 entity 存在：`LikeController.toggle` 直接给 Redis 加成员、`CommentController.add` 直接 insert。Service 入口加 `requirePostOrCommentExists(entityType, entityId)`
+- [x] **S2.11** Like / Comment 写前不校验 entity 存在（2026-05-10）：抽 `EntityExistenceChecker`（POST 走 `getRawPost` + `isDeleted` 检查；COMMENT 走 `commentMapper.selectById` + `status != 0` 检查），在 `LikeServiceImpl.like` 与 `CommentServiceImpl.addComment` 入口先 `requireExists`，杜绝脏 Redis Set 与孤儿评论。注：用 mapper 而非 CommentService 避免 LikeService↔CommentService 循环依赖
 
 ### S3 — DDD & 一致性收尾（~半天）
 
