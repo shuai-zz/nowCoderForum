@@ -223,6 +223,7 @@ com.example.<module>/
 | **S1** | 2026-05-10 | 安全 & 致命 bug：MD5+5字符 salt → BCrypt（`UserServiceImpl#register/login/updatePassword` + Flyway V3 删 `user.salt` 列 + 顺手修 `updatePassword` 比对 hash 而非原文的 latent bug）；avatar GET 路径遍历双层防御（白名单正则 + `Path.resolve().normalize().startsWith(baseDir)`）；avatar 上传无后缀 → 走 400 ValidationException；IOException 改抛 `UploadFailedException extends BizException` |
 | **S2** | 2026-05-10 ~ 2026-05-11 | 正确性 bug 11 项：`findDiscussPostById` 帖子不存在返回 `PostItem.missing` 而非 NPE；`PostController.detail` 调 `requirePostExists` 过滤软删；`CommentController.add` 校验顺序前置 + `EntityExistenceChecker` 形成 controller/service 双层；Follow LUA 改返回 `added`/`removed`，service 仅 `result==1` 时发 FollowEvent；`PostScoreRefreshJob` / `SearchIndexEventConsumer` 跳过软删帖子；`EventProducer` 序列化失败抛 `IllegalStateException`；`Event.eventId`（UUID）+ `EventIdempotencyGuard`（Redis SETNX，24h TTL）实现两个 Kafka consumer 幂等；`UserStatsEventListener` 0 行命中 warn 日志；`DataServiceImpl` UV/DAU 合并 key 加 10min TTL |
 | **S3** | 2026-05-11 | DDD & 一致性收尾 9 项：`ServiceLogAspect` `SimpleDateFormat` → `static DateTimeFormatter` + 删 P6 旧注释；`DiscussPost` 补齐 `@NoArgsConstructor`/`@AllArgsConstructor` 与四件套对齐；`PostItem` 拍平为结构性字段 + `from`/`missing`/`isMissing()`，VO 改接收 PostItem，interfaces 层不再消费 domain entity；`DiscussPostMapper.updateCommentCount/updateScore` 单 UPDATE 替代 select-then-update；三实体新增 `applySanitizedContent(...)` domain 方法替代 service 端 builder 重建；`FollowController` 加 `@RequestMapping("/api/v1")` class-level；删 `PostController.detail` 未用 `me`；`User.canActivateWith` 改 `Objects.equals` 防 NPE |
+| **T1** | 2026-05-11 | 单元测试从 1 → 138：分两轮把 Audit-2 列出的"测试覆盖 DEALBREAKER"清掉。第一轮 95 项覆盖 domain（`User.activate/canActivateWith`、`DiscussPost.calculateScore`、`Comment.isOnPost`、`SearchablePost` round-trip）+ `ContentSanitizer`/`SensitiveFilter` + `EntityLikedEvent`/`EntityUnlikedEvent` 三个 Listener（POST/COMMENT/USER 路由 + `entityUserId` 语义）+ `EventIdempotencyGuard`（null/blank eventId 短路 + SETNX 路径）+ `EntityExistenceChecker`（含软删）。第二轮 43 项覆盖 S1–S3 修复点：`EventProducer` 序列化失败抛 `IllegalStateException`、`LikeServiceImpl` Lua 1/0/null 三分支 + `requireExists` 守卫短路、`FollowServiceImpl` follow/unfollow 幂等不发事件 + Lua ARGV 类型契约（裸 Number 防 ZADD `not a valid float`）、`DataServiceImpl` UV/DAU merged key 必须 `expire(10min)`、`KaptchaServiceImpl` 60s TTL + owner 唯一。138 全绿，纯 JUnit 5 + Mockito，无 `@SpringBootTest`。 |
 
 ---
 
@@ -230,7 +231,7 @@ com.example.<module>/
 
 > 来源：长期技术债 + 简历 / 面试准备。每完成一项就把 `[ ]` 改成 `[x]` 并标完成日期。
 >
-> 第一轮 P0~P3、第二轮 S1~S3 已全部完成，详见 changelog。剩余 P4（架构层改造，简历项目可暂缓）+ P5（测试 / 简历 / 博客）。
+> 第一轮 P0~P3、第二轮 S1~S3、测试基线 T1 已全部完成，详见 changelog。剩余 P4（架构层改造，简历项目可暂缓）+ P5（简历 / 博客，**P5.1 测试已并入 T1 完成**）。
 
 ### P4 — 架构（工作量大，简历项目可暂缓）
 
@@ -242,7 +243,7 @@ com.example.<module>/
 
 ### P5 — 测试 & 简历准备（非代码）
 
-- [ ] **P5.1** 补充领域方法单元测试（`User.activate()` / `DiscussPost.calculateScore()` / `Comment.isOnPost()` 等）
+- [x] **P5.1** 补充领域方法单元测试（`User.activate()` / `DiscussPost.calculateScore()` / `Comment.isOnPost()` 等）— 2026-05-11，详见 changelog T1（138 测试，覆盖 domain + listener + S1–S3 修复点）
 - [ ] **P5.2** 更新简历：把 DDD 改造（贫血→充血、去框架污染、领域事件解耦、Read Model）写进项目亮点
 - [ ] **P5.3** 准备面试话术：每个改造点的 Why（为什么拆 UserDetails？为什么不用 `extends ServiceImpl`？Read Model 解决什么问题？）
 - [ ] **P5.4** 技术博客：《从 Transaction Script 到 Rich Domain Model 的实践》或类似主题
@@ -251,9 +252,8 @@ com.example.<module>/
 
 ### 推荐执行顺序
 
-1. **P5.1** — 给读模型 + 事件监听器写测试（半天到 1 天）—— 简历亮点不能没测试
-2. **P5.2~5.4** — 简历 / 面试话术 / 博客
-3. **P4** — 架构层改造，简历项目可暂缓
+1. **P5.2~5.4** — 简历 / 面试话术 / 博客（T1 完成后，测试已经能上简历）
+2. **P4** — 架构层改造，简历项目可暂缓
 
 ---
 
