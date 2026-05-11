@@ -39,7 +39,6 @@ import static com.example.shared.constant.ForumConstant.*;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final AuthTokenFilter authTokenFilter;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
 
@@ -59,8 +58,14 @@ public class SecurityConfig {
         return registration;
     }
 
+    /**
+     * {@code authTokenFilter} 用方法参数注入而非字段注入：SecurityConfig 同时提供 {@link #passwordEncoder()}
+     * bean，UserServiceImpl 通过构造器拿它 → AuthTokenFilter 又依赖 UserService，构造器字段注入会形成
+     * SecurityConfig → AuthTokenFilter → UserService → SecurityConfig 的 IoC 循环。
+     * 方法参数注入让 Spring 在 filterChain 真正构建时再解析依赖，循环被打破。
+     */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, AuthTokenFilter authTokenFilter) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())

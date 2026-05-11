@@ -64,9 +64,11 @@ public class FollowServiceImpl implements FollowService {
     public void follow(int userId, int entityType, int entityId, int entityUserId) {
         String followeeKey = RedisKeyUtil.getFolloweeKey(userId, entityType);
         String followerKey = RedisKeyUtil.getFollowerKey(entityType, entityId);
+        // ARGV 走 RedisTemplate 的 valueSerializer（JSON），String.valueOf(123) 会被序列化成 "\"123\""
+        // ZADD 收到带引号的 score 会抛 "not a valid float"。改传 Number，JSON 序列化为裸数字。
         Long added = redisTemplate.execute(FOLLOW_SCRIPT,
                 List.of(followeeKey, followerKey),
-                String.valueOf(entityId), String.valueOf(userId), String.valueOf(System.currentTimeMillis()));
+                entityId, userId, System.currentTimeMillis());
         if (added != null && added == 1L) {
             eventPublisher.publishEvent(new FollowEvent(userId, entityType, entityId, entityUserId));
         }
@@ -78,7 +80,7 @@ public class FollowServiceImpl implements FollowService {
         String followerKey = RedisKeyUtil.getFollowerKey(entityType, entityId);
         Long removed = redisTemplate.execute(UNFOLLOW_SCRIPT,
                 List.of(followeeKey, followerKey),
-                String.valueOf(entityId), String.valueOf(userId));
+                entityId, userId);
         if (removed != null && removed == 1L) {
             eventPublisher.publishEvent(new UnfollowEvent(userId, entityType, entityId, entityUserId));
         }

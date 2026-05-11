@@ -36,6 +36,7 @@ build/
 .env
 .env.example
 .claude
+sql_record.txt
 
 ### Personal Notes ###
 INTERVIEW.md
