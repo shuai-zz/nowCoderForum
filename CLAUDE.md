@@ -36,6 +36,13 @@ A Spring Boot forum web app (nowCoder Forum) refactored into a multi-module REST
 
 # Build
 ./mvnw clean package
+
+# 灌入演示数据（首次启动数据库为空时使用）
+# DataSeeder 是 @Profile("seed") 的 CommandLineRunner，会创建 10 个 demo 用户 + 12 个帖子 +
+# 15 条评论 + 11 个点赞 + 7 条关注 + 5 条私信，走 service 接口 + Kafka 事件，保证 MySQL/Redis/ES 三方一致。
+# 幂等：检测到 alice 用户存在则整体跳过。
+# 所有 demo 账号密码统一为 password123（已预激活，无需邮件激活）。
+./mvnw -pl system spring-boot:run -Dspring-boot.run.profiles=seed
 ```
 
 ## Architecture
